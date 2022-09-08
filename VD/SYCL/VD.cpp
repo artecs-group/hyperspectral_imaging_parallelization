@@ -1,0 +1,550 @@
+#include <CL/sycl.hpp>
+#include <cstdlib>
+#include <iostream>
+#include <vector>
+
+#include "oneapi/mkl.hpp"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <math.h>
+#include <time.h>
+#include <string.h>
+
+#include <sys/time.h>
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+
+#define MAXLINE 200
+#define MAXCAD 200
+#define FPS 5
+
+/*
+ * Author: Jorge Sevilla Cedillo
+ * Centre: Universidad de Extremadura
+ * */
+void cleanString(char *cadena, char *out)
+{
+    int i,j;
+    for( i = j = 0; cadena[i] != 0;++i)
+    {
+        if(isalnum(cadena[i])||cadena[i]=='{'||cadena[i]=='.'||cadena[i]==',')
+        {
+            out[j]=cadena[i];
+            j++;
+        }
+    }
+    for( i = j; out[i] != 0;++i)
+        out[j]=0;
+}
+
+/*
+ * Author: Jorge Sevilla Cedillo
+ * Centre: Universidad de Extremadura
+ * */
+int readHeader1(char* filename, int *lines, int *samples, int *bands, int *dataType,
+		char* interleave, int *byteOrder, char* waveUnit)
+{
+    FILE *fp;
+    char line[MAXLINE]="";
+    char value [MAXLINE]="";
+
+    if ((fp=fopen(filename,"rt"))!=NULL)
+    {
+        fseek(fp,0L,SEEK_SET);
+        while(fgets(line, MAXLINE, fp)!= NULL)
+        {
+            //Samples
+            if(strstr(line, "samples")!=NULL && samples !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                *samples = atoi(value);
+            }
+
+            //Lines
+            if(strstr(line, "lines")!=NULL && lines !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                *lines = atoi(value);
+            }
+
+            //Bands
+            if(strstr(line, "bands")!=NULL && bands !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                *bands = atoi(value);
+            }
+
+            //Interleave
+            if(strstr(line, "interleave")!=NULL && interleave !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                strcpy(interleave,value);
+            }
+
+            //Data Type
+            if(strstr(line, "data type")!=NULL && dataType !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                *dataType = atoi(value);
+            }
+
+            //Byte Order
+            if(strstr(line, "byte order")!=NULL && byteOrder !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                *byteOrder = atoi(value);
+            }
+
+            //Wavelength Unit
+            if(strstr(line, "wavelength unit")!=NULL && waveUnit !=NULL)
+            {
+                cleanString(strstr(line, "="),value);
+                strcpy(waveUnit,value);
+            }
+
+        }
+        fclose(fp);
+        return 0;
+    }
+    else
+    	return -2; //No file found
+}
+
+/*
+ * Author: Jorge Sevilla Cedillo
+ * Centre: Universidad de Extremadura
+ * */
+int readHeader2(char* filename, double* wavelength)
+{
+    FILE *fp;
+    char line[MAXLINE]="";
+    char value [MAXLINE]="";
+
+    if ((fp=fopen(filename,"rt"))!=NULL)
+    {
+        fseek(fp,0L,SEEK_SET);
+        while(fgets(line, MAXLINE, fp)!= NULL)
+        {
+            //Wavelength
+            if(strstr(line, "wavelength =")!=NULL && wavelength !=NULL)
+            {
+                char strAll[100000]=" ";
+                char *pch;
+                int cont = 0;
+                do
+                {
+                    fgets(line, 200, fp);
+                    cleanString(line,value);
+                    strcat(strAll,value);
+                } while(strstr(line, "}")==NULL);
+
+                pch = strtok(strAll,",");
+
+                while (pch != NULL)
+                {
+                    wavelength[cont]= atof(pch);
+                    pch = strtok (NULL, ",");
+                    cont++;
+                }
+            }
+
+		}
+		fclose(fp);
+		return 0;
+	}
+	else
+		return -2; //No file found
+}
+
+
+/*
+ * Author: Jorge Sevilla Cedillo
+ * Centre: Universidad de Extremadura
+ * */
+int loadImage(char* filename, double* image, int lines, int samples, int bands, int dataType, char* interleave)
+{
+
+    FILE *fp;
+    short int *tipo_short_int;
+    float *tipo_float;
+    double * tipo_double;
+    unsigned int *tipo_uint;
+    int i, j, k, op;
+    long int lines_samples = lines*samples;
+
+
+    if ((fp=fopen(filename,"rb"))!=NULL)
+    {
+
+        fseek(fp,0L,SEEK_SET);
+        tipo_float = (float*)malloc(lines_samples*bands*sizeof(float));
+        switch(dataType)
+        {
+            case 2:
+                tipo_short_int = (short int*)malloc(lines_samples*bands*sizeof(short int));
+                fread(tipo_short_int,1,(sizeof(short int)*lines_samples*bands),fp);
+                for(i=0; i<lines_samples * bands; i++)
+                    tipo_float[i]=(float)tipo_short_int[i];
+                free(tipo_short_int);
+                break;
+
+            case 4:
+                fread(tipo_float,1,(sizeof(float)*lines_samples*bands),fp);
+                break;
+
+            case 5:
+                tipo_double = (double*)malloc(lines_samples*bands*sizeof(double));
+                fread(tipo_double,1,(sizeof(double)*lines_samples*bands),fp);
+                for(i=0; i<lines_samples * bands; i++)
+                    tipo_float[i]=(float)tipo_double[i];
+                free(tipo_double);
+                break;
+
+            case 12:
+                tipo_uint = (unsigned int*)malloc(lines_samples*bands*sizeof(unsigned int));
+                fread(tipo_uint,1,(sizeof(unsigned int)*lines_samples*bands),fp);
+                for(i=0; i<lines_samples * bands; i++)
+                    tipo_float[i]=(float)tipo_uint[i];
+                free(tipo_uint);
+                break;
+
+        }
+        fclose(fp);
+
+        if(interleave == NULL)
+            op = 0;
+        else
+        {
+            if(strcmp(interleave, "bsq") == 0) op = 0;
+            if(strcmp(interleave, "bip") == 0) op = 1;
+            if(strcmp(interleave, "bil") == 0) op = 2;
+        }
+
+
+        switch(op)
+        {
+            case 0:
+                for(i=0; i<lines*samples*bands; i++)
+                    image[i] = tipo_float[i];
+                break;
+
+            case 1:
+                for(i=0; i<bands; i++)
+                    for(j=0; j<lines*samples; j++)
+                        image[i*lines*samples + j] = tipo_float[j*bands + i];
+                break;
+
+            case 2:
+                for(i=0; i<lines; i++)
+                    for(j=0; j<bands; j++)
+                        for(k=0; k<samples; k++)
+                            image[j*lines*samples + (i*samples+k)] = tipo_float[k+samples*(i*bands+j)];
+                break;
+        }
+        free(tipo_float);
+        return 0;
+    }
+    return -2;
+}
+
+/*
+ * Author: Luis Ignacio Jimenez Gil
+ * Centre: Universidad de Extremadura
+ * */
+int writeValueResults(char* filename, int result)
+{
+    FILE *fp;
+    int out = result;
+    if ((fp=fopen(filename,"wb"))!=NULL)
+    {
+        fseek(fp,0L,SEEK_SET);
+        fwrite(&out,1,sizeof(int),fp);
+        fclose(fp);
+    }
+    else return -1;
+
+    return 0;
+}
+
+/*
+ * Author: Luis Ignacio Jimenez Gil
+ * Centre: Universidad de Extremadura
+ * */
+int main(int argc, char* argv[])
+{
+
+	/*
+	 * PARAMETERS:
+	 *
+	 * argv[1]: Image filename
+	 * argv[2]: Approximation value
+	 * argv[3]: Output Result File
+	 *
+	 * */
+
+	if(argc != 4)
+	{
+		printf("EXECUTION ERROR VD Iterative: Parameters are not correct.");
+		printf("./VD [Image Filename] [Approximation] [Output Result File]");
+		fflush(stdout);
+		exit(-1);
+	}
+
+    struct timeval t0,tfin;
+    float t_sec, t_usec, secsVD=0.0;
+
+    int i, j, N;
+
+    double sigmaSquareTest;
+    double sigmaTest;
+    double TaoTest;
+    
+    sycl::queue my_queue{sycl::default_selector{}};
+
+    std::cout << "Device: "
+              << my_queue.get_device().get_info<sycl::info::device::name>()
+              << std::endl;
+
+	//READ IMAGE
+	char cad[MAXCAD];
+	int lines = 0, samples= 0, bands= 0, dataType= 0, byteOrder = 0;
+	char *interleave, *waveUnit;
+	interleave = (char*)malloc(MAXCAD*sizeof(char));
+	waveUnit = (char*)malloc(MAXCAD*sizeof(char));
+
+	strcpy(cad,argv[1]); // Second parameter: Header file:
+	strcat(cad,".hdr");
+	int error = readHeader1(cad, &lines, &samples, &bands, &dataType, interleave, &byteOrder, waveUnit);
+	if(error != 0)
+	{
+		printf("EXECUTION ERROR VD Iterative: Error 1 reading header file: %s.", cad);
+		fflush(stdout);
+		exit(-1);
+	}
+
+	double* wavelength = (double*)malloc(bands*sizeof(double));
+	strcpy(cad,argv[1]);
+	strcat(cad,".hdr");
+	error = readHeader2(cad, wavelength);
+	if(error != 0)
+	{
+		printf("EXECUTION ERROR VD Iterative: Error 2 reading header file: %s.", cad);
+		fflush(stdout);
+		exit(-1);
+	}
+
+    double* image  = sycl::malloc_host<double>(lines*samples*bands, my_queue);
+	error = loadImage(argv[1], image, lines, samples, bands, dataType, interleave);
+	if(error != 0)
+	{
+		printf("EXECUTION ERROR: Error reading image file: %s.", argv[1]);
+		fflush(stdout);
+		exit(-1);
+	}
+
+    N=lines*samples;
+    
+    float* mean  = sycl::malloc_device<float>(bands, my_queue);
+    
+	//COVARIANCE
+    double* meanSpect  = sycl::malloc_host<double>(bands, my_queue);
+    double* CovEigVal   = sycl::malloc_host<double>(bands, my_queue);
+    double* CorrEigVal  = sycl::malloc_host<double>(bands, my_queue);
+
+    int64_t* count = sycl::malloc_host<int64_t>(FPS, my_queue);
+
+    // Declaraciones de SVD movidas arriba
+    int64_t lwork = MAX(1,MAX(3*MIN(bands, bands)+MAX(bands,bands),5*MIN(bands,bands)));
+    int64_t *info;
+    double *work = NULL;
+
+    gettimeofday(&t0,NULL); //Measure the time - Start ATDCA algorithm
+
+    double* meanSpect_dev  = sycl::malloc_device<double>(bands, my_queue);
+    double* Cov_dev        = sycl::malloc_device<double>(bands*bands, my_queue);
+    double* Corr_dev       = sycl::malloc_device<double>(bands*bands, my_queue);
+    double* CovEigVal_dev  = sycl::malloc_device<double>(bands, my_queue);
+    double* CorrEigVal_dev = sycl::malloc_device<double>(bands, my_queue);
+    double* U_dev          = sycl::malloc_device<double>(bands*bands, my_queue);
+    double* VT_dev         = sycl::malloc_device<double>(bands*bands, my_queue);
+    double* image_dev      = sycl::malloc_device<double>(lines*samples*bands, my_queue);
+    int64_t* info_dev      = sycl::malloc_device<int64_t>(1, my_queue);
+    double* rwork_dev      = sycl::malloc_device<double>(lwork, my_queue);
+  
+    auto nonTrans = oneapi::mkl::transpose::nontrans;
+    auto yesTrans = oneapi::mkl::transpose::trans;
+
+    my_queue.submit([&] (sycl::handler& h) {
+        h.memcpy(image_dev, image, sizeof(double)*lines*samples*bands);
+    }).wait();
+  
+    my_queue.submit([&](auto &h) {
+        h.parallel_for(sycl::range(bands), [=](auto i) {
+            int j;
+            mean[i]=0;
+
+            for(j=0; j<N; j++)
+                mean[i]+=(image_dev[(i*N)+j]);
+
+            mean[i]/=N;
+            meanSpect_dev[i]=mean[i];
+
+            for(j=0; j<N; j++)
+            image_dev[(i*N)+j]=image_dev[(i*N)+j]-mean[i];
+        });
+    }).wait();
+
+    double alpha = (double)1/N, beta = 0;
+
+    try {
+    auto event1 = oneapi::mkl::blas::column_major::gemm(my_queue, yesTrans, nonTrans, bands, bands, N, alpha, image_dev, N, image_dev, N, beta, Cov_dev, bands);
+    event1.wait_and_throw();
+    }
+    catch(oneapi::mkl::lapack::exception const& e) {
+    std::cout << "Unexpected exception caught during synchronous call to LAPACK API:\ninfo: " << e.info() << std::endl;
+    return *info;
+    }
+
+    my_queue.wait();
+
+    //CORRELATION  
+    my_queue.submit([&](auto &h) {
+        h.parallel_for(sycl::range<2>(bands,bands), [=](auto index) {
+        int i = index[1];
+        int j = index[0];
+        Corr_dev[(i*bands)+j] = Cov_dev[(i*bands)+j]+(meanSpect_dev[i] * meanSpect_dev[j]);
+        });
+    }).wait();
+
+    //SVD
+    cl::sycl::context context = my_queue.get_context();
+    cl::sycl::device device = my_queue.get_device();
+
+    try {
+    lwork = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(my_queue, oneapi::mkl::jobsvd::novec, oneapi::mkl::jobsvd::novec, bands, bands, bands, bands, bands);
+    my_queue.wait_and_throw();
+    }
+    catch(oneapi::mkl::lapack::exception const& e) {
+    printf("Error in gesvd_scratchpad_size()...\nExiting...\n");
+    return -1;
+    }
+
+    double* work_dev = static_cast<double*>(sycl::malloc_device(lwork * sizeof(double), device, context));
+    if (lwork != 0 && !work_dev) {
+    printf("Error allocating scratchpad in the device memory...\nExiting...\n");
+    return -1;
+    }
+
+    try {
+    auto event2 = oneapi::mkl::lapack::gesvd(my_queue, oneapi::mkl::jobsvd::novec, oneapi::mkl::jobsvd::novec, bands, bands, Cov_dev, bands, CovEigVal_dev, U_dev, bands, VT_dev, bands, work_dev, lwork);
+    event2.wait_and_throw();
+    }
+    catch(oneapi::mkl::lapack::exception const& e) {
+    std::cout << "Unexpected exception caught during synchronous call to LAPACK API:\ninfo: " << e.info() << std::endl;
+    return *info;
+    }
+
+    my_queue.wait();
+
+    try {
+    auto event3 = oneapi::mkl::lapack::gesvd(my_queue, oneapi::mkl::jobsvd::novec, oneapi::mkl::jobsvd::novec, bands, bands, Corr_dev, bands, CorrEigVal_dev, U_dev, bands, VT_dev, bands, work_dev, lwork);
+    event3.wait_and_throw();
+    }
+    catch(oneapi::mkl::lapack::exception const& e) {
+    std::cout << "Unexpected exception caught during synchronous call to LAPACK API:\ninfo: " << e.info() << std::endl;
+    return *info;
+    }
+
+    my_queue.wait();
+
+    //ESTIMATION
+    double e;
+
+    my_queue.submit([&] (sycl::handler& h) {
+        h.memset(count, 0, FPS*sizeof(int64_t));
+    }).wait();
+
+    my_queue.submit([&] (sycl::handler& h) {
+        h.memcpy(CovEigVal, CovEigVal_dev, sizeof(double)*bands);
+    }).wait();
+
+    my_queue.submit([&] (sycl::handler& h) {
+        h.memcpy(CorrEigVal, CorrEigVal_dev, sizeof(double)*bands);
+    }).wait();
+
+    for(i=0; i<bands; i++)
+    {
+
+    sigmaSquareTest = (CovEigVal[i]*CovEigVal[i]+CorrEigVal[i]*CorrEigVal[i])*2/samples/lines;
+    sigmaTest = sqrt(sigmaSquareTest);
+
+    for(j=1;j<=FPS;j++)
+    {
+        switch(j)
+        {
+                case 1: e = 0.906193802436823;
+                break;
+                case 2: e = 1.644976357133188;
+                break;
+                case 3: e = 2.185124219133003;
+                break;
+                case 4: e = 2.629741776210312;
+                break;
+                case 5: e = 3.015733201402701;
+                break;
+        }
+        
+        TaoTest = sqrt(2) * sigmaTest * e;
+
+        if((CorrEigVal[i]-CovEigVal[i]) > TaoTest) count[j-1]++;
+        }
+    }
+
+    int res = count[atoi(argv[2])-1];
+    printf("res = %d\n", res);
+
+    gettimeofday(&tfin,NULL); //Measure the time - End ATDCA algorithm
+
+    //CALCULATE THE TIME FOR VD ALGORITHM
+    t_sec  = (float)  (tfin.tv_sec - t0.tv_sec);
+    t_usec = (float)  (tfin.tv_usec - t0.tv_usec);
+    secsVD = t_sec + t_usec/1.0e+6;   
+    
+    //OUTPUT WITH THE TOTAL TIME
+    printf("VD IT algorithm:\t%.5f seconds\n", secsVD);
+
+	error = writeValueResults(argv[3], res);
+	if(error != 0)
+	{
+		printf("EXECUTION ERROR VD Iterative: Error writing results file: %s.", argv[3]);
+		fflush(stdout);
+		exit(-1);
+	}
+
+    free(interleave);
+    free(waveUnit);
+    free(wavelength);
+
+    sycl::free(image, context);
+    sycl::free(count, context);
+    sycl::free(CovEigVal, context);
+    sycl::free(CorrEigVal, context);
+    sycl::free(work_dev, context);
+    sycl::free(meanSpect, context);
+    sycl::free(meanSpect_dev, context);
+    sycl::free(Cov_dev, context);
+    sycl::free(Corr_dev, context);
+    sycl::free(CovEigVal_dev, context);
+    sycl::free(CorrEigVal_dev, context);
+    sycl::free(U_dev, context);
+    sycl::free(VT_dev, context);
+    sycl::free(image_dev, context);
+    sycl::free(info_dev, context);
+    sycl::free(rwork_dev, context);
+    sycl::free(mean, context);
+
+	return 0;
+}
