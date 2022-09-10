@@ -970,6 +970,7 @@ int main(int argc, char *argv[])//(double *image, int lines, int samples, int ba
 
 		#pragma acc parallel loop
 		for(i=0; i<lines_samples; i++) {
+			#pragma acc loop
 			for(j=0; j<targets; j++)
 				sumxu[i] += y[j*lines_samples+i];
 		}
