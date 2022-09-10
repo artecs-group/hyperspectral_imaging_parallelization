@@ -780,9 +780,11 @@ int main(int argc, char *argv[])//(double *image, int lines, int samples, int ba
 		}
 
 		#pragma omp teams distribute parallel for collapse(2)
-		for(i=0; i<lines_samples; i++)
+		for(i=0; i<lines_samples; i++) {
+			#pragma omp parallel for
 			for(j=0; j<targets; j++)
 				sumxu[i] += y[j*lines_samples+i];
+		}
 
 		#pragma omp teams distribute parallel for collapse(2)
 		for(i=0; i<targets; i++)

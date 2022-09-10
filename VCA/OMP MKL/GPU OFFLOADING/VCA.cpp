@@ -814,7 +814,7 @@ map(to: rank)
 		#pragma omp target teams distribute 
 		for(i=0; i<lines_samples; i++)
     	{
-			#pragma omp single
+			#pragma omp parallel for
 			for(j=0; j<targets; j++)
 				sumxu[i] += y[j*lines_samples+i];
     	}
