@@ -4,7 +4,7 @@ LIBRARIES := -fortranlibs -lblas -llapack -lm
 
 CC = gcc
 
-CFLAGS = -O4
+CFLAGS = -O3
 
 PGCC = pgcc -Minfo=accel -fast -acc -ta=multicore -DDEBUG
 
