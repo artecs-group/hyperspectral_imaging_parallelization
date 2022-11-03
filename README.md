@@ -1,0 +1,2 @@
+# hyperspectral_imaging_parallelization
+Hyperspectral imaging parallelization with different programming models
