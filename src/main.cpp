@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
-    const unsigned int N = lines*samples;
+    int approxVal = atoi(argv[2]);
 
 	delete[] image;
 	delete[] interleave;
