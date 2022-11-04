@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "common.hpp"
+#include "VD/vd.hpp"
 
 /*
  * Author: Jorge Sevilla Cedillo
@@ -133,7 +134,7 @@ int readHeader2(char* filename, double* wavelength) {
 
 template <typename T>
 void convertToFloat(long int lines_samples, int bands, FILE *fp, float* type_float){
-    T* typeValue = new T[lines_samples*bands*sizeof(T)];
+    T* typeValue = new T[lines_samples*bands];
     fread(typeValue, 1, (sizeof(T) * lines_samples * bands), fp);
     for(int i = 0; i < lines_samples * bands; i++)
         type_float[i] = (float) typeValue[i];
@@ -155,7 +156,7 @@ int loadImage(char* filename, double* image, int lines, int samples, int bands, 
     if ((fp=fopen(filename,"rb"))!=NULL) {
 
         fseek(fp, 0L, SEEK_SET);
-        type_float = new float[lines_samples*bands*sizeof(float)];
+        type_float = new float[lines_samples*bands];
         
         switch(dataType) {
             case 2:
@@ -219,9 +220,9 @@ int main(int argc, char* argv[]) {
 
 	// Read image
 	char cad[MAXCAD];
+	char interleave[MAXCAD];
+	char waveUnit[MAXCAD];
 	int lines{0}, samples{0}, bands{0}, dataType{0}, byteOrder{0};
-	char* interleave = new char[MAXCAD * sizeof(char)];
-	char* waveUnit = new char[MAXCAD * sizeof(char)];
 
     // Read header first parameters
 	strcpy(cad, argv[1]);
@@ -233,14 +234,14 @@ int main(int argc, char* argv[]) {
 	}
 
     // Read header wavelenght, which requires bands from previous read
-    double* wavelength = new double[bands * sizeof(double)];
+    double* wavelength = new double[bands];
     error = readHeader2(cad, wavelength);
 	if(error != 0) {
         std::cout << "Error reading wavelength from header file: " << cad << std::endl; 
 		exit(-1);
 	}
 
-	double *image = new double[lines*samples*bands*sizeof(double)];
+	double *image = new double[lines*samples*bands];
 	error = loadImage(argv[1], image, lines, samples, bands, dataType, interleave);
 	if(error != 0) {
         std::cout << "Error reading image file: " << argv[1] << std::endl;
@@ -249,10 +250,11 @@ int main(int argc, char* argv[]) {
 
     int approxVal = atoi(argv[2]);
 
-	delete[] image;
-	delete[] interleave;
-	delete[] waveUnit;
-	delete[] wavelength;
+    SequentialVD vd = SequentialVD(lines, samples, bands);
+    vd.run(approxVal, image);
 
+	delete[] image;
+	delete[] wavelength;
+    
 	return 0;
 }

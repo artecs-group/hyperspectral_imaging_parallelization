@@ -3,38 +3,22 @@
 
 class VD {
     public:
-        virtual void run(int, double*);
-        virtual void free();
-
+        virtual void run(int approxVal, double* image) = 0;
         int result;
 
     protected:
         static constexpr int FPS{5};
-
-        int bands;
-        int N;
-
-        double sigmaSquareTest;
-        double sigmaTest;
-        double TaoTest;
-
-        double *meanSpect;
-        double *Cov;
-        double *Corr;
-        double *CovEigVal;
-        double *CorrEigVal;
-        double *U;
-        double *VT;
-        double *estimation;
+        int lines, samples, bands;
+        double sigmaSquareTest, sigmaTest, TaoTest;
+        double *meanSpect, *Cov, *Corr, *CovEigVal, *CorrEigVal, *U, *VT, *estimation;
 };
 
 
 class SequentialVD: VD {
     public:
-        SequentialVD(int bands, int N);
+        SequentialVD(int _lines, int _samples, int _bands);
         ~SequentialVD();
-        void run(int, double*);
+        void run(int approxVal, double* image);
 };
-
 
 #endif
