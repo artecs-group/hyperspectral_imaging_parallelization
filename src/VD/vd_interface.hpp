@@ -1,7 +1,7 @@
-#ifndef _VD_
-#define _VD_
+#ifndef _VD_INTERFACE_
+#define _VD_INTERFACE_
 
-class VD {
+class I_VD {
     public:
         virtual void run(int approxVal, double* image) = 0;
         int result;
@@ -12,13 +12,4 @@ class VD {
         double sigmaSquareTest, sigmaTest, TaoTest;
         double *meanSpect, *Cov, *Corr, *CovEigVal, *CorrEigVal, *U, *VT, *estimation;
 };
-
-
-class SequentialVD: VD {
-    public:
-        SequentialVD(int _lines, int _samples, int _bands);
-        ~SequentialVD();
-        void run(int approxVal, double* image);
-};
-
 #endif

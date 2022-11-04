@@ -3,7 +3,12 @@
 #include <string.h>
 
 #include "common.hpp"
-#include "VD/vd.hpp"
+
+#if defined(SEQUENTIAL)
+#include "VD/sequential/vd.hpp"
+#else
+#include "VD/openmp/vd.hpp"
+#endif
 
 /*
  * Author: Jorge Sevilla Cedillo
@@ -250,7 +255,11 @@ int main(int argc, char* argv[]) {
 
     int approxVal = atoi(argv[2]);
 
-    SequentialVD vd = SequentialVD(lines, samples, bands);
+#if defined(SEQUENTIAL)
+SequentialVD vd = SequentialVD(lines, samples, bands);
+#else
+OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
+#endif
     vd.run(approxVal, image);
 
 	delete[] image;

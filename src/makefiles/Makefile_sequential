@@ -1,0 +1,31 @@
+DEBUG = no
+
+# Default compiler and flags
+CC = icpx
+CFLAGS = -I"${MKLROOT}/include" -qmkl -DSEQUENTIAL
+CLINK =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl
+
+# Debug Flags
+ifeq ($(DEBUG),yes)
+ CFLAGS += -g -O0
+else
+ CFLAGS += -O3
+endif
+
+main_sequential: ./VD/sequential/vd.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sequential/vd.o -o main_sequential
+
+main.o: ./VD/sequential/vd.o
+	$(CC) $(CFLAGS) main.cpp -c -o main.o
+
+./VD/sequential/vd.o:
+	$(CC) $(CFLAGS) ./VD/sequential/vd.cpp -c -o ./VD/sequential/vd.o
+
+run: main_sequential
+	./main_sequential ../data/Cuprite 5
+
+.PHONY: clean
+clean:
+	rm -f main_sequential \
+	*.o \
+	./VD/sequential/*.o

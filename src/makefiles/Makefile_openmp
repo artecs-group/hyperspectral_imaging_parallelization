@@ -1,0 +1,45 @@
+DEVICE = cpu # cpu, igpu, nvidia
+DEBUG = no # yes, no
+
+# Default compiler and flags
+CC = icpx
+CFLAGS = -I"${MKLROOT}/include" -qmkl
+CLINK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -lm -ldl
+
+ifeq ($(DEVICE),igpu)
+    CFLAGS += -DGPU -fiopenmp -fopenmp-targets=spir64
+    CLINK = -fiopenmp -fopenmp-targets=spir64 -fsycl -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_sycl.a ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl
+else ifeq ($(DEVICE),nvidia)
+    CC = nvc++
+    CFLAGS = -DGPU -DNVIDIA_GPU -I/usr/local/cuda/include -lcuda -lcublas -fopenmp -mp=gpu
+    CLINK = -L/usr/local/cuda/lib64 -lcudart
+else
+    CFLAGS += -DCPU -xhost
+endif
+
+# Debug Flags
+ifeq ($(DEBUG),yes)
+ CFLAGS += -g -O0
+else
+ CFLAGS += -O3
+endif
+
+CFLAGS += -DOPENMP
+
+main_openmp: ./VD/openmp/vd.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o -o main_openmp
+
+main.o: ./VD/openmp/vd.o
+	$(CC) $(CFLAGS) main.cpp -c -o main.o
+
+./VD/openmp/vd.o:
+	$(CC) $(CFLAGS) ./VD/openmp/vd.cpp -c -o ./VD/openmp/vd.o
+
+run: main_openmp
+	./main_openmp ../data/Cuprite 5
+
+.PHONY: clean
+clean:
+	rm -f main_openmp \
+	*.o \
+	./VD/openmp/*.o
