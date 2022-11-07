@@ -41,12 +41,14 @@ SequentialVD::~SequentialVD() {
 }
 
 
-void SequentialVD::run(int approxVal, double* image) {
+void SequentialVD::run(const int approxVal, double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
-    double mean{0.f};
+    double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     unsigned int* countT = new unsigned int[FPS];
     const int N{lines*samples};
+    const double alpha{(double) 1/N}, beta{0};
+    double superb[bands-1];
 
     start = std::chrono::high_resolution_clock::now();
     for(int i = 0; i < bands; i++) {
@@ -59,7 +61,6 @@ void SequentialVD::run(int approxVal, double* image) {
 			image[i*N + j] -= mean;
 	}
 
-    double alpha = (double)1/N, beta = 0;
     cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, Cov, bands);
 
 	//correlation
@@ -68,7 +69,6 @@ void SequentialVD::run(int approxVal, double* image) {
         	Corr[i*bands + j] = Cov[i*bands + j]+(meanSpect[i] * meanSpect[j]);
 
 	//SVD
-    double superb[bands-1];
     LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
     LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
 
