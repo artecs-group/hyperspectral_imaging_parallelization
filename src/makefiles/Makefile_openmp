@@ -24,8 +24,6 @@ else
  CFLAGS += -O3
 endif
 
-CFLAGS += -DOPENMP
-
 main_openmp: ./VD/openmp/vd.o main.o
 	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o -o main_openmp
 

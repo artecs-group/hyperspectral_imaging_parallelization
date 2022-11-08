@@ -25,6 +25,7 @@ OpenMP_VD::OpenMP_VD(int _lines, int _samples, int _bands){
     CorrEigVal = new double[bands];
     U		   = new double[bands * bands];
     VT	       = new double[bands * bands];
+    count      = new unsigned int[FPS];
     estimation = new double[FPS];
 
     // table where find the estimation by FPS
@@ -44,6 +45,8 @@ OpenMP_VD::~OpenMP_VD() {
     delete[] CorrEigVal;
     delete[] U;
     delete[] VT;
+    delete[] count;
+    delete[] count;
     delete[] estimation;
 }
 
@@ -52,7 +55,6 @@ void OpenMP_VD::runOnCPU(const int approxVal, double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double* mean = new double[bands];
-    unsigned int* count = new unsigned int[FPS];
     const int N{lines*samples};
     double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     const double alpha{(double) 1/N}, beta{0};
@@ -108,8 +110,7 @@ void OpenMP_VD::runOnCPU(const int approxVal, double* image) {
     
     std::cout << "Result = " << result << std::endl;
     std::cout << std::endl << "OpenMP over CPU VD time = " << tVd << " (s)" << std::endl;
-    
-    delete[] count;
+
     delete[] mean;
 }
 
@@ -204,8 +205,6 @@ void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
     
     std::cout << "Result = " << result << std::endl;
     std::cout << std::endl << "OpenMP over GPU VD time = " << tVd << " (s)" << std::endl;
-    
-    delete[] count;
 }
 
 

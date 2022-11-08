@@ -4,10 +4,12 @@
 
 #include "common.hpp"
 
-#if defined(SEQUENTIAL)
+#if defined(_VD_SEQUENTIAL_)
 #include "VD/sequential/vd.hpp"
-#else
+#elif defined(_VD_OPENMP_)
 #include "VD/openmp/vd.hpp"
+#else
+#include "VD/sycl/vd.hpp"
 #endif
 
 /*
@@ -255,10 +257,12 @@ int main(int argc, char* argv[]) {
 
     int approxVal = atoi(argv[2]);
 
-#if defined(SEQUENTIAL)
+#if defined(_VD_SEQUENTIAL_)
 SequentialVD vd = SequentialVD(lines, samples, bands);
-#else
+#elif defined(_VD_OPENMP_)
 OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
+#else
+SYCL_VD vd = SYCL_VD(lines, samples, bands);
 #endif
     vd.run(approxVal, image);
 

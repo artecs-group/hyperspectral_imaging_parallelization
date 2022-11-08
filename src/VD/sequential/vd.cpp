@@ -18,6 +18,7 @@ SequentialVD::SequentialVD(int _lines, int _samples, int _bands){
     CorrEigVal = new double[bands];
     U		   = new double[bands * bands];
     VT	       = new double[bands * bands];
+    count      = new unsigned int[FPS];
     estimation = new double[FPS];
 
     // table where find the estimation by FPS
@@ -37,6 +38,7 @@ SequentialVD::~SequentialVD() {
     delete[] CorrEigVal;
     delete[] U;
     delete[] VT;
+    delete[] count;
     delete[] estimation;
 }
 
@@ -45,7 +47,6 @@ void SequentialVD::run(const int approxVal, double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
-    unsigned int* countT = new unsigned int[FPS];
     const int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
@@ -73,7 +74,7 @@ void SequentialVD::run(const int approxVal, double* image) {
     LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
 
     //estimation
-    std::fill(countT, countT+FPS, 0);
+    std::fill(count, count+FPS, 0);
 
     for(int i = 0; i < bands; i++) {
     	sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * 2 / samples / lines;
@@ -83,16 +84,14 @@ void SequentialVD::run(const int approxVal, double* image) {
             TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
 
             if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)
-                countT[j-1]++;
+                count[j-1]++;
         }
     }
 
-    result = countT[approxVal-1];
+    result = count[approxVal-1];
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
     std::cout << "Result = " << result << std::endl;
     std::cout << std::endl << "Sequential VD time = " << tVd << " (s)" << std::endl;
-    
-    delete[] countT;
 }
