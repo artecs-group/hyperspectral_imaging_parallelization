@@ -55,7 +55,7 @@ void OpenMP_VD::runOnCPU(const int approxVal, double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double* mean = new double[bands];
-    const int N{lines*samples};
+    const unsigned int N{lines*samples};
     double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
@@ -120,7 +120,7 @@ void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
     float tVd{0.f};
     double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     unsigned int* count = new unsigned int[FPS];
-    const int N{lines*samples};
+    const unsigned int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
     const int default_dev = omp_get_default_device();

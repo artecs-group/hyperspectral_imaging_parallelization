@@ -2,15 +2,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "common.hpp"
-
-#if defined(_VD_SEQUENTIAL_)
-#include "VD/sequential/vd.hpp"
-#elif defined(_VD_OPENMP_)
+#if defined(SYCL)
+#include "VD/sycl/vd.hpp"
+#elif defined(OPENMP)
 #include "VD/openmp/vd.hpp"
 #else
-#include "VD/sycl/vd.hpp"
+#include "VD/sequential/vd.hpp"
 #endif
+
+#define MAXLINE 200
+#define MAXCAD 200
 
 /*
  * Author: Jorge Sevilla Cedillo
@@ -257,12 +258,12 @@ int main(int argc, char* argv[]) {
 
     int approxVal = atoi(argv[2]);
 
-#if defined(_VD_SEQUENTIAL_)
-SequentialVD vd = SequentialVD(lines, samples, bands);
-#elif defined(_VD_OPENMP_)
+#if defined(SYCL)
+SYCL_VD vd = SYCL_VD(lines, samples, bands);
+#elif defined(OPENMP)
 OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
 #else
-SYCL_VD vd = SYCL_VD(lines, samples, bands);
+SequentialVD vd = SequentialVD(lines, samples, bands);
 #endif
     vd.run(approxVal, image);
 

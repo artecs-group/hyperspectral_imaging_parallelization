@@ -8,7 +8,7 @@ class I_VD {
 
     protected:
         static constexpr int FPS{5};
-        int lines, samples, bands;
+        unsigned int lines, samples, bands;
         double *meanSpect, *Cov, *Corr, *CovEigVal, *CorrEigVal, *U, *VT, *estimation;
         unsigned int* count;
 };

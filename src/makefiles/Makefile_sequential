@@ -2,7 +2,7 @@ DEBUG = no
 
 # Default compiler and flags
 CC = icpx
-CFLAGS = -I"${MKLROOT}/include" -qmkl
+CFLAGS = -I"${MKLROOT}/include" -qmkl -DMKL_ILP64 -DSEQUENTIAL
 CLINK =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl
 
 # Debug Flags

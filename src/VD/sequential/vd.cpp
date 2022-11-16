@@ -47,7 +47,7 @@ void SequentialVD::run(const int approxVal, double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
-    const int N{lines*samples};
+    const unsigned int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
 
