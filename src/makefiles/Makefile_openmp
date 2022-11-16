@@ -26,20 +26,24 @@ else
  CFLAGS += -O3
 endif
 
-main_openmp: ./VD/openmp/vd.o main.o
-	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o -o main_openmp
+main_openmp: ./VCA/openmp/vca.o ./VD/openmp/vd.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o ./VCA/openmp/vca.o -o main_openmp
 
-main.o: ./VD/openmp/vd.o
+main.o: ./VCA/openmp/vca.o ./VD/openmp/vd.o
 	$(CC) $(CFLAGS) main.cpp -c -o main.o
 
 ./VD/openmp/vd.o:
 	$(CC) $(CFLAGS) ./VD/openmp/vd.cpp -c -o ./VD/openmp/vd.o
 
+./VCA/openmp/vca.o:
+	$(CC) $(CFLAGS) ./VCA/openmp/vca.cpp -c -o ./VCA/openmp/vca.o
+
 run: main_openmp
-	./main_openmp ../data/Cuprite 5
+	./main_openmp ../data/Cuprite 5 0
 
 .PHONY: clean
 clean:
 	rm -f main_openmp \
 	*.o \
-	./VD/openmp/*.o
+	./VD/openmp/*.o \
+	./VCA/openmp/*.o

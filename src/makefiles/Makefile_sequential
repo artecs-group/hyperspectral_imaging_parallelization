@@ -12,20 +12,24 @@ else
  CFLAGS += -O3
 endif
 
-main_sequential: ./VD/sequential/vd.o main.o
-	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sequential/vd.o -o main_sequential
+main_sequential: ./VCA/sequential/vca.o ./VD/sequential/vd.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sequential/vd.o ./VCA/sequential/vca.o -o main_sequential
 
-main.o: ./VD/sequential/vd.o
+main.o: ./VD/sequential/vd.o ./VCA/sequential/vca.o
 	$(CC) $(CFLAGS) main.cpp -c -o main.o
 
 ./VD/sequential/vd.o:
 	$(CC) $(CFLAGS) ./VD/sequential/vd.cpp -c -o ./VD/sequential/vd.o
 
+./VCA/sequential/vca.o:
+	$(CC) $(CFLAGS) ./VCA/sequential/vca.cpp -c -o ./VCA/sequential/vca.o
+
 run: main_sequential
-	./main_sequential ../data/Cuprite 5
+	./main_sequential ../data/Cuprite 5 0
 
 .PHONY: clean
 clean:
 	rm -f main_sequential \
 	*.o \
-	./VD/sequential/*.o
+	./VD/sequential/*.o \
+	./VCA/sequential/*.o

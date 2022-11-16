@@ -4,10 +4,13 @@
 
 #if defined(SYCL)
 #include "VD/sycl/vd.hpp"
+#include "VCA/sycl/vca.hpp"
 #elif defined(OPENMP)
 #include "VD/openmp/vd.hpp"
+#include "VCA/openmp/vca.hpp"
 #else
 #include "VD/sequential/vd.hpp"
+#include "VCA/sequential/vca.hpp"
 #endif
 
 #define MAXLINE 200
@@ -220,9 +223,9 @@ int loadImage(char* filename, double* image, int lines, int samples, int bands, 
 
 
 int main(int argc, char* argv[]) {
-	if(argc != 3) {
+	if(argc != 4) {
         std::cout << "Parameters are not correct." << std::endl
-                  << "./main <Image Filename> <Approximation value>" << std::endl;
+                  << "./main <Image Filename> <Approximation value> <Signal noise ratio (SNR)>" << std::endl;
 		exit(-1);
 	}
 
@@ -257,6 +260,7 @@ int main(int argc, char* argv[]) {
 	}
 
     int approxVal = atoi(argv[2]);
+    float SNR     = atof(argv[3]);
 
 #if defined(SYCL)
 SYCL_VD vd = SYCL_VD(lines, samples, bands);
@@ -265,7 +269,22 @@ OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
 #else
 SequentialVD vd = SequentialVD(lines, samples, bands);
 #endif
+
+    std::cout << "---------------- VD -----------------" << std::endl;
     vd.run(approxVal, image);
+    std::cout << "-------------------------------------" << std::endl << std::endl;
+
+#if defined(SYCL)
+SYCL_VCA vca = SYCL_VCA(lines, samples, bands, vd.getNumberEndmembers());
+#elif defined(OPENMP)
+OpenMP_VCA vca = OpenMP_VCA(lines, samples, bands, vd.getNumberEndmembers());
+#else
+SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers());
+#endif
+
+    std::cout << "---------------- VCA ----------------" << std::endl;
+    vca.run(SNR, image);
+    std::cout << "-------------------------------------" << std::endl << std::endl;
 
 	delete[] image;
 	delete[] wavelength;

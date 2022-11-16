@@ -106,11 +106,11 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
         }
     }
 
-    result = count[approxVal-1];
+    endmembers = count[approxVal-1];
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    std::cout << "Result = " << result << std::endl;
+    std::cout << "Endmembers = " << endmembers << std::endl;
     std::cout << std::endl << "OpenMP over CPU VD time = " << tVd << " (s)" << std::endl;
 
     delete[] mean;
@@ -203,11 +203,11 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
     }
     #pragma omp target exit data map(from: count[0: FPS]) device(default_dev)
 
-    result = count[approxVal-1];
+    endmembers = count[approxVal-1];
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    std::cout << "Result = " << result << std::endl;
+    std::cout << "Endmembers = " << endmembers << std::endl;
     std::cout << std::endl << "OpenMP over GPU VD time = " << tVd << " (s)" << std::endl;
 }
 

@@ -101,7 +101,7 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
 
     _queue.submit([&](sycl::handler &h) {
         double* meanSpect = this->meanSpect;
-        double* meanImage     = this->meanImage;
+        double* meanImage = this->meanImage;
         double* mean      = this->mean;
 
         h.parallel_for<class image_mean>(sycl::range(bands), [=](auto i) {
@@ -164,10 +164,10 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
         });
     }).wait();
 
-    result = count[approxVal-1];
+    endmembers = count[approxVal-1];
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    std::cout << "Result = " << result << std::endl;
+    std::cout << "Endmembers = " << endmembers << std::endl;
     std::cout << std::endl << "SYCL VD time = " << tVd << " (s)" << std::endl;
 }

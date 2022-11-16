@@ -9,6 +9,7 @@ class SYCL_VD: I_VD {
         SYCL_VD(int _lines, int _samples, int _bands);
         ~SYCL_VD();
         void run(const int approxVal, const double* h_image);
+        unsigned int getNumberEndmembers() { return endmembers; };
     private:
         sycl::queue _get_queue();
         sycl::queue _queue;

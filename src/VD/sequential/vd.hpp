@@ -8,6 +8,8 @@ class SequentialVD: I_VD {
         SequentialVD(int _lines, int _samples, int _bands);
         ~SequentialVD();
         void run(const int approxVal, const double* image);
+        unsigned int getNumberEndmembers() { return endmembers; };
+
 };
 
 #endif
