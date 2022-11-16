@@ -1,6 +1,8 @@
 #ifndef _VCA_INTERFACE_
 #define _VCA_INTERFACE_
 
+#define EPSILON 1.11e-16
+
 class I_VCA {
     public:
         virtual void run(float SNR, const double* image) = 0;

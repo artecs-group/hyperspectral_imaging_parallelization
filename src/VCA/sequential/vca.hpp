@@ -3,8 +3,6 @@
 
 #include "../vca_interface.hpp"
 
-#define EPSILON 1.11e-16
-
 class SequentialVCA: I_VCA {
     public:
         SequentialVCA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers);

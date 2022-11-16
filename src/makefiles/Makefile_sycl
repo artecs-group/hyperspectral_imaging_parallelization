@@ -25,8 +25,8 @@ else
  CFLAGS += -O3
 endif
 
-main_sycl: ./VCA/sycl/vca.o ./VD/sycl/vd.o main.o
-	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sycl/vd.o ./VCA/sycl/vca.o -o main_sycl
+main_sycl: ./VCA/sycl/vca.o ./VD/sycl/vd.o ./utils/sycl_selector.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sycl/vd.o ./VCA/sycl/vca.o ./utils/sycl_selector.o -o main_sycl
 
 main.o: ./VCA/sycl/vca.o ./VD/sycl/vd.o
 	$(CC) $(CFLAGS) main.cpp -c -o main.o
@@ -37,6 +37,10 @@ main.o: ./VCA/sycl/vca.o ./VD/sycl/vd.o
 ./VCA/sycl/vca.o:
 	$(CC) $(CFLAGS) ./VCA/sycl/vca.cpp -c -o ./VCA/sycl/vca.o
 
+
+./utils/sycl_selector.o:
+	$(CC) $(CFLAGS) ./utils/sycl_selector.cpp -c -o ./utils/sycl_selector.o
+
 run: main_sycl
 	./main_sycl ../data/Cuprite 5 0
 
@@ -45,4 +49,5 @@ clean:
 	rm -f main_sycl \
 	*.o \
 	./VD/sycl/*.o \
-	./VCA/sycl/*.o
+	./VCA/sycl/*.o \
+	./utils/sycl_selector.o

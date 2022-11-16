@@ -12,7 +12,7 @@ constexpr oneapi::mkl::transpose trans = oneapi::mkl::transpose::trans;
 constexpr oneapi::mkl::transpose nontrans = oneapi::mkl::transpose::nontrans;
 
 SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
-    _queue     = _get_queue();
+    _queue     = get_queue();
     lines      = _lines;
     samples    = _samples;
     bands      = _bands;
@@ -66,24 +66,6 @@ SYCL_VD::~SYCL_VD() {
     sycl::free(meanImage, _queue);
     sycl::free(mean, _queue);
     sycl::free(gesvd_scratchpad, _queue);
-}
-
-sycl::queue SYCL_VD::_get_queue(){
-#if defined(INTEL_GPU)
-	IntelGPUSelector selector{};
-#elif defined(NVIDIA_GPU)
-	NvidiaGPUSelector selector{};
-#elif defined(CPU)
-	sycl::cpu_selector selector{};
-#else
-	default_selector selector{};
-#endif
-
-	sycl::queue queue{selector};
-    std::cout << "Running on: "
-              << queue.get_device().get_info<sycl::info::device::name>()
-              << std::endl;
-    return queue;
 }
 
 
