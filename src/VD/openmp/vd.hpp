@@ -7,10 +7,10 @@ class OpenMP_VD: I_VD {
     public:
         OpenMP_VD(int _lines, int _samples, int _bands);
         ~OpenMP_VD();
-        void run(int approxVal, double* image);
+        void run(const int approxVal, const double* image);
     private:
-        void runOnCPU(int approxVal, double* image);
-        void runOnGPU(int approxVal, double* image);
+        void runOnCPU(const int approxVal, const double* image);
+        void runOnGPU(const int approxVal, const double* image);
 };
 
 #endif

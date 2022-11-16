@@ -27,6 +27,7 @@ OpenMP_VD::OpenMP_VD(int _lines, int _samples, int _bands){
     VT	       = new double[bands * bands];
     count      = new unsigned int[FPS];
     estimation = new double[FPS];
+    meanImage  = new double [lines * samples * bands];
 
     // table where find the estimation by FPS
     estimation[0] = 0.906193802436823;
@@ -48,10 +49,11 @@ OpenMP_VD::~OpenMP_VD() {
     delete[] count;
     delete[] count;
     delete[] estimation;
+    delete[] meanImage;
 }
 
 
-void OpenMP_VD::runOnCPU(const int approxVal, double* image) {
+void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double* mean = new double[bands];
@@ -74,10 +76,10 @@ void OpenMP_VD::runOnCPU(const int approxVal, double* image) {
 
         #pragma omp parallel for
         for(int j = 0; j < N; j++)
-			image[i*N + j] -= mean[i];
+			meanImage[i*N + j] = image[i*N + j] - mean[i];
 	}
 
-    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, Cov, bands);
+    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
 
 	//correlation
     #pragma omp teams distribute parallel for collapse(2)
@@ -115,7 +117,7 @@ void OpenMP_VD::runOnCPU(const int approxVal, double* image) {
 }
 
 
-void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
+void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
@@ -134,6 +136,7 @@ void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
     double* CorrEigVal = this->CorrEigVal;
     double* U = this->U;
     double* VT = this->VT;
+    double* meanImage = this->meanImage;
 
     start = std::chrono::high_resolution_clock::now();
 
@@ -144,7 +147,8 @@ void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
             image[0:lines*samples*bands]) \
     map(alloc: meanSpect[0:bands], Cov[0:bands*bands], \
         Corr[0:bands*bands], CovEigVal[0:bands], CorrEigVal[0:bands], \
-        U[0:bands*bands], VT[0:bands*bands], superb[0:bands-1]) device(default_dev)
+        U[0:bands*bands], VT[0:bands*bands], superb[0:bands-1], \
+        meanImage[0:lines*samples*bands]) device(default_dev)
     {    
         #pragma omp target teams distribute private(mean) device(default_dev)
         for(int i = 0; i < bands; i++) {
@@ -158,12 +162,12 @@ void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
 
             #pragma omp parallel for
             for(int j = 0; j < N; j++)
-                image[i*N + j] -= mean;
+                meanImage[i*N + j] = image[i*N + j] - mean;
         }
 
-        #pragma omp target data use_device_ptr(image, Cov) device(default_dev)
+        #pragma omp target data use_device_ptr(meanImage, Cov) device(default_dev)
         {
-            cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, Cov, bands);
+            cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
         }
 
         //correlation
@@ -208,7 +212,7 @@ void OpenMP_VD::runOnGPU(const int approxVal, double* image) {
 }
 
 
-void OpenMP_VD::run(int approxVal, double* image) {
+void OpenMP_VD::run(const int approxVal, const double* image) {
 #if defined(GPU)
     runOnGPU(approxVal, image);
 #else

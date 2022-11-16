@@ -8,11 +8,11 @@ class SYCL_VD: I_VD {
     public:
         SYCL_VD(int _lines, int _samples, int _bands);
         ~SYCL_VD();
-        void run(int approxVal, double* h_image);
+        void run(const int approxVal, const double* h_image);
     private:
         sycl::queue _get_queue();
         sycl::queue _queue;
-        double *image, *mean, *gesvd_scratchpad;
+        double *mean, *gesvd_scratchpad;
         int64_t _scrach_size;
 };
 

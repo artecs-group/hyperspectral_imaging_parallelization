@@ -20,6 +20,7 @@ SequentialVD::SequentialVD(int _lines, int _samples, int _bands){
     VT	       = new double[bands * bands];
     count      = new unsigned int[FPS];
     estimation = new double[FPS];
+    meanImage  = new double [lines * samples * bands];
 
     // table where find the estimation by FPS
     estimation[0] = 0.906193802436823;
@@ -40,10 +41,11 @@ SequentialVD::~SequentialVD() {
     delete[] VT;
     delete[] count;
     delete[] estimation;
+    delete[] meanImage;
 }
 
 
-void SequentialVD::run(const int approxVal, double* image) {
+void SequentialVD::run(const int approxVal, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
@@ -59,10 +61,10 @@ void SequentialVD::run(const int approxVal, double* image) {
         meanSpect[i] = mean;
 
         for(int j = 0; j < N; j++)
-			image[i*N + j] -= mean;
+			meanImage[i*N + j] = image[i*N + j] - mean;
 	}
 
-    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, Cov, bands);
+    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
 
 	//correlation
     for(int j = 0; j < bands; j++)

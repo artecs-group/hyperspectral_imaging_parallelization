@@ -24,7 +24,7 @@ SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
     U		   = sycl::malloc_device<double>(bands*bands, _queue);
     VT	       = sycl::malloc_device<double>(bands*bands, _queue);
     count      = sycl::malloc_shared<unsigned int>(FPS, _queue);
-    image	   = sycl::malloc_device<double>(lines*samples*bands, _queue);
+    meanImage  = sycl::malloc_device<double>(lines*samples*bands, _queue);
     estimation = sycl::malloc_device<double>(FPS, _queue);
     mean       = sycl::malloc_device<double>(bands, _queue);
     _scrach_size = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(
@@ -63,7 +63,7 @@ SYCL_VD::~SYCL_VD() {
     sycl::free(VT, _queue);
     sycl::free(estimation, _queue);
     sycl::free(count, _queue);
-    sycl::free(image, _queue);
+    sycl::free(meanImage, _queue);
     sycl::free(mean, _queue);
     sycl::free(gesvd_scratchpad, _queue);
 }
@@ -87,37 +87,37 @@ sycl::queue SYCL_VD::_get_queue(){
 }
 
 
-void SYCL_VD::run(const int approxVal, double* h_image) {
+void SYCL_VD::run(const int approxVal, const double* h_image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
 
     const unsigned int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
 
-    _queue.memcpy(image, h_image, sizeof(double)*lines*samples*bands);
+    _queue.memcpy(meanImage, h_image, sizeof(double)*lines*samples*bands);
     _queue.wait();
 
     start = std::chrono::high_resolution_clock::now();
 
     _queue.submit([&](sycl::handler &h) {
         double* meanSpect = this->meanSpect;
-        double* image     = this->image;
+        double* meanImage     = this->meanImage;
         double* mean      = this->mean;
 
         h.parallel_for<class image_mean>(sycl::range(bands), [=](auto i) {
             mean[i] = 0;
             for(int j = 0; j < N; j++)
-                mean[i] += image[(i*N) + j];
+                mean[i] += meanImage[(i*N) + j];
 
             mean[i] /= N;
             meanSpect[i] = mean[i];
 
             for(int j = 0; j < N; j++)
-                image[(i*N) + j] -= mean[i];
+                meanImage[(i*N) + j] -= mean[i];
         });
     }).wait();
 
-    oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, image, N, image, N, beta, Cov, bands);
+    oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
     _queue.wait();
 
     _queue.submit([&](sycl::handler &h) {
