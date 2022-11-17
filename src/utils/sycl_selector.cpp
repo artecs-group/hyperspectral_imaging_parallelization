@@ -1,6 +1,11 @@
 #include "sycl_selector.hpp"
 
+static sycl::queue* dev_queue;
+
 sycl::queue get_queue(){
+    if(dev_queue)
+        return *dev_queue;
+
 #if defined(INTEL_GPU)
 	IntelGPUSelector selector{};
 #elif defined(NVIDIA_GPU)
@@ -11,9 +16,10 @@ sycl::queue get_queue(){
 	default_selector selector{};
 #endif
 
-	sycl::queue queue{selector};
-    std::cout << "Running on: "
-              << queue.get_device().get_info<sycl::info::device::name>()
-              << std::endl;
-    return queue;
+    dev_queue = new sycl::queue{selector};
+    std::cout << std::endl << "Running on: "
+            << dev_queue->get_device().get_info<sycl::info::device::name>()
+            << std::endl << std::endl;
+
+    return *dev_queue;
 }
