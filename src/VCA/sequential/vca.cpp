@@ -185,12 +185,6 @@ void SequentialVCA::run(float SNR, const double* image) {
 			w[j] /= std::numeric_limits<int>::max();
 		}
 
-        // Compute the pseudo inverse of A
-        double* pinvS  = new double[targetEndmembers];
-        double* pinvU  = new double[targetEndmembers * targetEndmembers];
-        double* pinvVT = new double[targetEndmembers * targetEndmembers];
-        double scarch_pinv[targetEndmembers-1];
-
         std::copy(A, A + targetEndmembers*targetEndmembers, A2);
 
         LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
@@ -209,10 +203,6 @@ void SequentialVCA::run(float SNR, const double* image) {
         for (int i = 0; i < targetEndmembers; i++)
             for (int j = 0; j < targetEndmembers; j++) 
                 Utranstmp[i + j * targetEndmembers] = pinvS[i] * pinvU[j + i * targetEndmembers];
-
-        for (int i = targetEndmembers; i < targetEndmembers; i++)
-            for (int j = 0; j < targetEndmembers; j++) 
-                Utranstmp[i + j * targetEndmembers] = 0.0;
 
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A2, targetEndmembers);
         // End of computation of the pseudo inverse A

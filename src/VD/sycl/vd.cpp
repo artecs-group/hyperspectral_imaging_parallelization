@@ -76,10 +76,10 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     const unsigned int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
 
+    start = std::chrono::high_resolution_clock::now();
+
     _queue.memcpy(meanImage, h_image, sizeof(double)*lines*samples*bands);
     _queue.wait();
-
-    start = std::chrono::high_resolution_clock::now();
 
     _queue.submit([&](sycl::handler &h) {
         double* meanSpect = this->meanSpect;
