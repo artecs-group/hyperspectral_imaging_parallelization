@@ -48,25 +48,9 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 
     gesvd_scratchpad = sycl::malloc_device<double>(_scrach_size, _queue);
 
-	_queue.memset(Ud, 0, bands * targetEndmembers*sizeof(double));
-	_queue.memset(x_p, 0, lines * samples * targetEndmembers*sizeof(double));
-	_queue.memset(y, 0, lines * samples * targetEndmembers*sizeof(double));
-	_queue.memset(meanImage, 0, bands * lines * samples*sizeof(double));
 	_queue.memset(mean, 0, bands*sizeof(double));
-	_queue.memset(svdMat, 0, bands * bands*sizeof(double));
-	_queue.memset(D, 0, bands*sizeof(double));
-	_queue.memset(U, 0, bands * bands*sizeof(double));
-	_queue.memset(VT, 0, bands * bands*sizeof(double));
-	_queue.memset(endmembers, 0, targetEndmembers * bands*sizeof(double));
-	_queue.memset(Rp, 0, bands * lines * samples*sizeof(double));
 	_queue.memset(u, 0, targetEndmembers*sizeof(double));
 	_queue.memset(sumxu, 0, lines * samples*sizeof(double));
-	_queue.memset(w, 0, targetEndmembers*sizeof(double));
-	_queue.memset(A, 0, targetEndmembers * targetEndmembers*sizeof(double));
-	_queue.memset(A2, 0, targetEndmembers * targetEndmembers*sizeof(double));
-	_queue.memset(aux, 0, targetEndmembers * targetEndmembers*sizeof(double));
-	_queue.memset(f, 0, targetEndmembers*sizeof(double));
-	_queue.memset(index, 0, targetEndmembers*sizeof(unsigned int));
 	_queue.wait();
 }
 

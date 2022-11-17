@@ -11,7 +11,7 @@ ifeq ($(DEVICE),igpu)
     CLINK = -fiopenmp -fopenmp-targets=spir64 -fsycl -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_sycl.a ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl
 else ifeq ($(DEVICE),nvidia)
     CC = nvc++
-    CFLAGS = -DGPU -DNVIDIA_GPU -I/usr/local/cuda/include -lcuda -lcublas -fopenmp -mp=gpu
+    CFLAGS = -DGPU -DNVIDIA_GPU -I/usr/local/cuda/include -lcuda -lcublas -lcusolver -fopenmp -mp=gpu
     CLINK = -L/usr/local/cuda/lib64 -lcudart
 else
     CFLAGS += -DCPU -xhost

@@ -355,15 +355,16 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
     start = std::chrono::high_resolution_clock::now();
 
 	#pragma omp target enter data \
-	map(to: image[0:bands*lines*samples], mean[0:bands], D[0:bands], U[0:bands*bands], VT[0:bands*bands],\
-		u[0:targetEndmembers], sumxu[0:lines*samples], A[0:targetEndmembers*targetEndmembers]) \
+	map(to: image[0:bands*lines*samples], mean[0:bands], u[0:targetEndmembers], sumxu[0:lines*samples]) \
 	map(alloc: endmembers[0:targetEndmembers*bands], meanImage[0:bands*lines*samples],\
 		Ud[0:bands*targetEndmembers], x_p[0:lines*samples*targetEndmembers], y[0:lines*samples*targetEndmembers],\
 		svdMat[0:bands*bands], Rp[0:bands*lines*samples], w[0:targetEndmembers],\
 		A2[0:targetEndmembers*targetEndmembers], aux[0:targetEndmembers*targetEndmembers],\
 		f[0:targetEndmembers], index[0:targetEndmembers], pinvS[0:targetEndmembers],\
 		pinvU[0:targetEndmembers*targetEndmembers], pinvVT[0:targetEndmembers*targetEndmembers],\
-		Utranstmp[0:targetEndmembers*targetEndmembers], scarch_pinv[0:targetEndmembers-1]) device(default_dev)
+		Utranstmp[0:targetEndmembers*targetEndmembers], scarch_pinv[0:targetEndmembers-1],\
+		D[0:bands], U[0:bands*bands], VT[0:bands*bands], A[0:targetEndmembers*targetEndmembers]) \
+	device(default_dev)
 	{
 		// get mean image
 		#pragma omp target teams distribute
