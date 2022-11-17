@@ -39,6 +39,10 @@ OpenMP_VCA::OpenMP_VCA(int _lines, int _samples, int _bands, unsigned int _targe
 	aux        = new double [targetEndmembers * targetEndmembers]();
 	f          = new double [targetEndmembers]();
     index      = new unsigned int [targetEndmembers]();
+    pinvS      = new double[targetEndmembers]();
+    pinvU      = new double[targetEndmembers * targetEndmembers]();
+    pinvVT     = new double[targetEndmembers * targetEndmembers]();
+    Utranstmp  = new double[targetEndmembers * targetEndmembers]();
 }
 
 
@@ -62,23 +66,20 @@ OpenMP_VCA::~OpenMP_VCA(){
 	delete[] aux;
 	delete[] f;
     delete[] index;
+    delete[] pinvS;
+    delete[] pinvU;
+    delete[] pinvVT;
+    delete[] Utranstmp;
 }
 
 
 void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
-    const unsigned int N{lines*samples}; 
-    int info{0};
+    const unsigned int N{lines*samples};
 	double sum1{0}, sum2{0}, powery, powerx, mult{0}, sum1Sqrt{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
     double superb[bands-1];
-
-    // Aux variables to compute the pseudo inverse of A
-    double* pinvS  = new double[targetEndmembers];
-    double* pinvU  = new double[targetEndmembers * targetEndmembers];
-    double* pinvVT = new double[targetEndmembers * targetEndmembers];
-    double* Utranstmp = new double[targetEndmembers * targetEndmembers];
     double scarch_pinv[targetEndmembers-1];
 
     start = std::chrono::high_resolution_clock::now();
@@ -303,11 +304,6 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 
     std::cout << "Endmembers sum = " << result << std::endl;
     std::cout << std::endl << "OpenMP over CPU, VCA time = " << tVca << " (s)" << std::endl;
-
-    delete[] pinvS;
-    delete[] pinvU;
-    delete[] pinvVT;
-    delete[] Utranstmp;
 }
 
 
@@ -315,17 +311,10 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
     const unsigned int N{lines*samples}; 
-    int info{0};
 	double sum1{0}, sum2{0}, powery, powerx, mult{0}, sum1Sqrt{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
     double superb[bands-1];
 	const int default_dev = omp_get_default_device();
-
-    // Aux variables to compute the pseudo inverse of A
-    double* pinvS  = new double[targetEndmembers]();
-    double* pinvU  = new double[targetEndmembers * targetEndmembers]();
-    double* pinvVT = new double[targetEndmembers * targetEndmembers]();
-    double* Utranstmp = new double[targetEndmembers * targetEndmembers]();
     double scarch_pinv[targetEndmembers-1];
 
     double* Ud = this->Ud;
@@ -346,6 +335,10 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 	double* A2 = this->A2;
 	double* aux = this->aux;
 	double* f = this->f;
+	double* pinvS = this->pinvS;;
+	double* pinvU = this->pinvU;;
+	double* pinvVT = this->pinvVT;;
+	double* Utranstmp = this->Utranstmp;;
     unsigned int* index = this->index;
 	unsigned int lines = this->lines;
 	unsigned int samples = this->samples;
@@ -653,11 +646,6 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 
     std::cout << "Endmembers sum = " << result << std::endl;
     std::cout << std::endl << "OpenMP over GPU, VCA time = " << tVca << " (s)" << std::endl;
-
-    delete[] pinvS;
-    delete[] pinvU;
-    delete[] pinvVT;
-    delete[] Utranstmp;
 }
 
 

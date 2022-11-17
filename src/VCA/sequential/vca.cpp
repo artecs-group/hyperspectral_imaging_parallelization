@@ -32,6 +32,10 @@ SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int 
 	aux        = new double [targetEndmembers * targetEndmembers]();
 	f          = new double [targetEndmembers]();
     index      = new unsigned int [targetEndmembers]();
+    pinvS      = new double[targetEndmembers]();
+    pinvU      = new double[targetEndmembers * targetEndmembers]();
+    pinvVT     = new double[targetEndmembers * targetEndmembers]();
+    Utranstmp  = new double[targetEndmembers * targetEndmembers]();
 }
 
 
@@ -55,6 +59,10 @@ SequentialVCA::~SequentialVCA(){
 	delete[] aux;
 	delete[] f;
     delete[] index;
+    delete[] pinvS;
+    delete[] pinvU;
+    delete[] pinvVT;
+    delete[] Utranstmp;
 }
 
 
@@ -62,16 +70,9 @@ void SequentialVCA::run(float SNR, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
     const unsigned int N{lines*samples}; 
-    int info{0};
 	double sum1{0}, sum2{0}, powery, powerx, mult{0}, sum1Sqrt{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
     double superb[bands-1];
-
-    // Aux variables to compute the pseudo inverse of A
-    double* pinvS  = new double[targetEndmembers];
-    double* pinvU  = new double[targetEndmembers * targetEndmembers];
-    double* pinvVT = new double[targetEndmembers * targetEndmembers];
-    double* Utranstmp = new double[targetEndmembers * targetEndmembers];
     double scarch_pinv[targetEndmembers-1];
 
     start = std::chrono::high_resolution_clock::now();
@@ -245,9 +246,4 @@ void SequentialVCA::run(float SNR, const double* image) {
 
     std::cout << "Endmembers sum = " << result << std::endl;
     std::cout << std::endl << "Sequential VCA time = " << tVca << " (s)" << std::endl;
-
-    delete[] pinvS;
-    delete[] pinvU;
-    delete[] pinvVT;
-    delete[] Utranstmp;
 }

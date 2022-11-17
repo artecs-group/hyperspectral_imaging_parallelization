@@ -12,6 +12,7 @@ class I_VCA {
         unsigned int lines, samples, bands, targetEndmembers;
         unsigned int *index;
         double *Ud, *x_p, *y, *meanImage, *mean, *svdMat, *D, *U, *VT, 
-               *Rp, *u, *sumxu, *w, *A, *A2, *aux, *f, *endmembers;
+               *Rp, *u, *sumxu, *w, *A, *A2, *aux, *f, *endmembers,
+               *pinvS, *pinvU, *pinvVT, *Utranstmp;
 };
 #endif
