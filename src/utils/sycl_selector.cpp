@@ -23,3 +23,9 @@ sycl::queue get_queue(){
 
     return *dev_queue;
 }
+
+
+void freeQueue() {
+    if(dev_queue)
+        delete[] dev_queue;
+}

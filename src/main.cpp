@@ -5,6 +5,7 @@
 #if defined(SYCL)
 #include "VD/sycl/vd.hpp"
 #include "VCA/sycl/vca.hpp"
+#include "utils/sycl_selector.hpp"
 #elif defined(OPENMP)
 #include "VD/openmp/vd.hpp"
 #include "VCA/openmp/vca.hpp"
@@ -288,6 +289,9 @@ SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers(
 
 	delete[] image;
 	delete[] wavelength;
+#if defined(SYCL)
+    freeQueue();
+#endif
     
 	return 0;
 }
