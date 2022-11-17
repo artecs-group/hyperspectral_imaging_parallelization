@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
+#include <chrono>
 
 #if defined(SYCL)
 #include "VD/sycl/vd.hpp"
@@ -235,6 +236,11 @@ int main(int argc, char* argv[]) {
 	char interleave[MAXCAD];
 	char waveUnit[MAXCAD];
 	int lines{0}, samples{0}, bands{0}, dataType{0}, byteOrder{0};
+    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+    float appTime{0.f};
+
+    start = std::chrono::high_resolution_clock::now();
+    std::cout << std::endl << "Starting image processing ..." << std::endl;
 
     // Read header first parameters
 	strcpy(cad, argv[1]);
@@ -286,6 +292,10 @@ SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers(
     std::cout << "---------------- VCA ----------------" << std::endl;
     vca.run(SNR, image);
     std::cout << "-------------------------------------" << std::endl << std::endl;
+
+    end = std::chrono::high_resolution_clock::now();
+    appTime += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
+    std::cout << "Image processing took = " << appTime << " (s)" << std::endl;
 
 	delete[] image;
 	delete[] wavelength;
