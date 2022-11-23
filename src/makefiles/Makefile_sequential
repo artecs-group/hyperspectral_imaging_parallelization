@@ -12,8 +12,8 @@ else
  CFLAGS += -O3
 endif
 
-main_sequential: ./VCA/sequential/vca.o ./VD/sequential/vd.o main.o
-	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sequential/vd.o ./VCA/sequential/vca.o -o main_sequential
+main_sequential: ./VCA/sequential/vca.o ./VD/sequential/vd.o ./ISRA/sequential/isra.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/sequential/vd.o ./VCA/sequential/vca.o ./ISRA/sequential/isra.o -o main_sequential
 
 main.o: ./VD/sequential/vd.o ./VCA/sequential/vca.o
 	$(CC) $(CFLAGS) main.cpp -c -o main.o
@@ -24,12 +24,16 @@ main.o: ./VD/sequential/vd.o ./VCA/sequential/vca.o
 ./VCA/sequential/vca.o:
 	$(CC) $(CFLAGS) ./VCA/sequential/vca.cpp -c -o ./VCA/sequential/vca.o
 
+./ISRA/sequential/isra.o:
+	$(CC) $(CFLAGS) ./ISRA/sequential/isra.cpp -c -o ./ISRA/sequential/isra.o
+
 run: main_sequential
-	./main_sequential ../data/Cuprite 5 0
+	./main_sequential ../data/Cuprite 5 0 5
 
 .PHONY: clean
 clean:
 	rm -f main_sequential \
 	*.o \
 	./VD/sequential/*.o \
-	./VCA/sequential/*.o
+	./VCA/sequential/*.o \
+	./ISRA/sequential/*.o

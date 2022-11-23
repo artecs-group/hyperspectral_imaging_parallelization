@@ -6,13 +6,16 @@
 #if defined(SYCL)
 #include "VD/sycl/vd.hpp"
 #include "VCA/sycl/vca.hpp"
+#include "ISRA/sycl/isra.hpp"
 #include "utils/sycl_selector.hpp"
 #elif defined(OPENMP)
 #include "VD/openmp/vd.hpp"
 #include "VCA/openmp/vca.hpp"
+#include "ISRA/openmp/isra.hpp"
 #else
 #include "VD/sequential/vd.hpp"
 #include "VCA/sequential/vca.hpp"
+#include "ISRA/sequential/isra.hpp"
 #endif
 
 #define MAXLINE 200
@@ -225,9 +228,9 @@ int loadImage(char* filename, double* image, int lines, int samples, int bands, 
 
 
 int main(int argc, char* argv[]) {
-	if(argc != 4) {
+	if(argc != 5) {
         std::cout << "Parameters are not correct." << std::endl
-                  << "./main <Image Filename> <Approximation value> <Signal noise ratio (SNR)>" << std::endl;
+                  << "./main <Image Filename> <Approximation value> <Signal noise ratio (SNR)> <Max iterations> " << std::endl;
 		exit(-1);
 	}
 
@@ -265,13 +268,15 @@ int main(int argc, char* argv[]) {
 
     int approxVal = atoi(argv[2]);
     float SNR     = atof(argv[3]);
+    int maxIter   = atoi(argv[4]);
 
     std::cout << "Parameters:" << std::endl
                     << "    -> Lines                    = " << lines << std::endl
                     << "    -> Samples                  = " << samples << std::endl
                     << "    -> Bands                    = " << bands << std::endl
                     << "    -> Approximation value (VD) = " << approxVal << std::endl
-                    << "    -> SNR (VCA)                = " << SNR << std::endl;
+                    << "    -> SNR (VCA)                = " << SNR << std::endl
+                    << "    -> Max iterations (ISRA)    = " << maxIter << std::endl;
     std::cout << "Starting image processing ..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
 
@@ -297,6 +302,18 @@ SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers(
 
     std::cout << "---------------- VCA ----------------" << std::endl;
     vca.run(SNR, image);
+    std::cout << "-------------------------------------" << std::endl << std::endl;
+
+#if defined(SYCL)
+SYCL_ISRA isra = SYCL_ISRA(lines, samples, bands, vd.getNumberEndmembers());
+#elif defined(OPENMP)
+OpenMP_ISRA isra = OpenMP_ISRA(lines, samples, bands, vd.getNumberEndmembers());
+#else
+SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembers());
+#endif
+
+    std::cout << "---------------- ISRA ----------------" << std::endl;
+    isra.run(maxIter, image, vca.getEndmembers());
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
     end = std::chrono::high_resolution_clock::now();

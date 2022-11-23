@@ -8,7 +8,7 @@ CLINK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/
 
 ifeq ($(DEVICE),igpu)
     CFLAGS += -DGPU -fiopenmp -fopenmp-targets=spir64
-    CLINK = -fiopenmp -fopenmp-targets=spir64 -fsycl -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_sycl.a ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl
+    CLINK = -fiopenmp -fopenmp-targets=spir64  -fsycl  ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl
 else ifeq ($(DEVICE),nvidia)
     CC = nvc++
     CFLAGS = -DGPU -DNVIDIA_GPU -I/usr/local/cuda/include -lcuda -lcublas -lcusolver -fopenmp -mp=gpu
@@ -26,8 +26,8 @@ else
  CFLAGS += -O3
 endif
 
-main_openmp: ./VCA/openmp/vca.o ./VD/openmp/vd.o main.o
-	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o ./VCA/openmp/vca.o -o main_openmp
+main_openmp: ./VCA/openmp/vca.o ./VD/openmp/vd.o ./ISRA/openmp/isra.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o ./VCA/openmp/vca.o ./ISRA/openmp/isra.o -o main_openmp
 
 main.o: ./VCA/openmp/vca.o ./VD/openmp/vd.o
 	$(CC) $(CFLAGS) main.cpp -c -o main.o
@@ -38,12 +38,16 @@ main.o: ./VCA/openmp/vca.o ./VD/openmp/vd.o
 ./VCA/openmp/vca.o:
 	$(CC) $(CFLAGS) ./VCA/openmp/vca.cpp -c -o ./VCA/openmp/vca.o
 
+./ISRA/openmp/isra.o:
+	$(CC) $(CFLAGS) ./ISRA/openmp/isra.cpp -c -o ./ISRA/openmp/isra.o
+
 run: main_openmp
-	./main_openmp ../data/Cuprite 5 0
+	./main_openmp ../data/Cuprite 5 0 5
 
 .PHONY: clean
 clean:
 	rm -f main_openmp \
 	*.o \
 	./VD/openmp/*.o \
-	./VCA/openmp/*.o
+	./VCA/openmp/*.o \
+	./ISRA/openmp/*.o
