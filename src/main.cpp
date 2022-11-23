@@ -239,9 +239,6 @@ int main(int argc, char* argv[]) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float appTime{0.f};
 
-    start = std::chrono::high_resolution_clock::now();
-    std::cout << std::endl << "Starting image processing ..." << std::endl;
-
     // Read header first parameters
 	strcpy(cad, argv[1]);
 	strcat(cad, ".hdr");
@@ -268,6 +265,15 @@ int main(int argc, char* argv[]) {
 
     int approxVal = atoi(argv[2]);
     float SNR     = atof(argv[3]);
+
+    std::cout << "Parameters:" << std::endl
+                    << "    -> Lines                    = " << lines << std::endl
+                    << "    -> Samples                  = " << samples << std::endl
+                    << "    -> Bands                    = " << bands << std::endl
+                    << "    -> Approximation value (VD) = " << approxVal << std::endl
+                    << "    -> SNR (VCA)                = " << SNR << std::endl;
+    std::cout << "Starting image processing ..." << std::endl;
+    start = std::chrono::high_resolution_clock::now();
 
 #if defined(SYCL)
 SYCL_VD vd = SYCL_VD(lines, samples, bands);

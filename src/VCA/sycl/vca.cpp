@@ -64,6 +64,7 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 	_queue.memset(mean, 0, bands*sizeof(double));
 	_queue.memset(u, 0, targetEndmembers*sizeof(double));
 	_queue.memset(sumxu, 0, lines * samples*sizeof(double));
+	_queue.memset(A, 0, targetEndmembers * targetEndmembers*sizeof(double));
 
 	_queue.submit([&](cl::sycl::handler &h) {
 		double* A = this->A;
@@ -111,9 +112,8 @@ SYCL_VCA::~SYCL_VCA(){
 void SYCL_VCA::run(float SNR, const double* image) {
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
-    unsigned int N{lines*samples}; 
-    int info{0};
-	double sum1{0}, sum2{0}, mult{0}, alpha{1.0f}, beta{0.f};
+    unsigned int N{lines*samples};
+	double alpha{1.0f}, beta{0.f};
     const double SNR_th{15 + 10 * std::log10(targetEndmembers)};
 
     double* Ud = this->Ud;
@@ -385,14 +385,16 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		_queue.submit([&](cl::sycl::handler &h) {
 			h.single_task<class vca_180>([=]() {
 				double dSum{0};
+				unsigned int dIndex{0};
 				for(int j = 0; j < N; j++) {
 					if(sumxu[j] < 0) 
 						sumxu[j] *= -1;
 					if(dSum < sumxu[j]) {
 						dSum = sumxu[j];
-						index[i] = j;
+						dIndex = j;
 					}
 				}
+				index[i] = dIndex;
 			});
 		}).wait();
 
@@ -400,14 +402,13 @@ void SYCL_VCA::run(float SNR, const double* image) {
 			h.parallel_for<class vca_190>(cl::sycl::range(targetEndmembers), [=](auto j) {
 				A[j*targetEndmembers + i] = y[j*N + index[i]];
 			});
-		});
+		}).wait();
 
 		_queue.submit([&](cl::sycl::handler &h) {
 			h.parallel_for<class vca_200>(cl::sycl::range(bands), [=](auto j) {
 				endmembers[j*targetEndmembers + i] = Rp[bands * index[i] + j];
 			});
-		});
-		_queue.wait();
+		}).wait();
 	}
 
     end = std::chrono::high_resolution_clock::now();
