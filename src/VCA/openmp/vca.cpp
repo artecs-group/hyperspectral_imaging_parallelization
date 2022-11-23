@@ -219,6 +219,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 		for (size_t i = 0; i < targetEndmembers*targetEndmembers; i++)
 			A2[i] = A[i];
 
+		// Start of computation of the pseudo inverse A
         LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
 
         double maxi = std::numeric_limits<double>::min();

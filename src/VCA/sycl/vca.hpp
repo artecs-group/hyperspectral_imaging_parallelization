@@ -14,8 +14,9 @@ class SYCL_VCA: I_VCA {
         double* getEndmembers() { return endmembers; };
     private:
         sycl::queue _queue;
-        double* gesvd_scratchpad;
-        int64_t _scrach_size;
+        double *gesvd_scratchpad, *pinv_scratchpad, *dImage, *sum1Sqrt;
+        float* dSNR;
+        int64_t scrach_size, pinv_size;
 };
 
 #endif

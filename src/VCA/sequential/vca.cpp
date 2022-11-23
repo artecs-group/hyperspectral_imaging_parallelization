@@ -188,6 +188,7 @@ void SequentialVCA::run(float SNR, const double* image) {
 
         std::copy(A, A + targetEndmembers*targetEndmembers, A2);
 
+		// Start of computation of the pseudo inverse A
         LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
 
         double maxi = *std::max_element(pinvS, pinvS + targetEndmembers);
