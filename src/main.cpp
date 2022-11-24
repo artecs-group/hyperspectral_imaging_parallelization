@@ -45,7 +45,7 @@ int readHeader1(const std::string& filename, int* lines, int* samples, int* band
     while(std::getline(inFile, line)) {
         size_t s_pos = line.find("=");
         if(s_pos != std::string::npos)
-            cleanString(line.substr(s_pos, line.length()-1-s_pos), &value);
+            cleanString(line.substr(s_pos, line.length()-s_pos), &value);
         
         if(line.find("samples") != std::string::npos && samples != NULL)
             *samples = std::stoi(value);
@@ -61,6 +61,8 @@ int readHeader1(const std::string& filename, int* lines, int* samples, int* band
             *byteOrder = std::stoi(value);
         else if(line.find("wavelength unit") != std::string::npos && waveUnit != NULL)
             *waveUnit = value;
+        
+        value = "";
     }
 
     inFile.close();
