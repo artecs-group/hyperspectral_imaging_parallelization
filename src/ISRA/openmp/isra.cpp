@@ -62,8 +62,8 @@ void OpenMP_ISRA::runOnCPU(int maxIter, const double* image, const double* endme
     end = std::chrono::high_resolution_clock::now();
     tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    double result = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Sum abundance = " << result << std::endl;
+    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
+    std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "OpenMP over CPU, ISRA time = " << tIsra << " (s)" << std::endl;
 }
 
@@ -121,8 +121,8 @@ void OpenMP_ISRA::runOnGPU(int maxIter, const double* image, const double* endme
     end = std::chrono::high_resolution_clock::now();
     tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    double result = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Sum abundance = " << result << std::endl;
+    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
+    std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "OpenMP over GPU, ISRA time = " << tIsra << " (s)" << std::endl;
 }
 

@@ -72,9 +72,21 @@ SYCL_VD::~SYCL_VD() {
 void SYCL_VD::run(const int approxVal, const double* h_image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
-
     const unsigned int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
+
+    double* CovEigVal    = this->CovEigVal;
+    double* CorrEigVal   = this->CorrEigVal;
+    unsigned int* count  = this->count;
+    double* estimation   = this->estimation;
+    double* meanSpect = this->meanSpect;
+    double* meanImage = this->meanImage;
+    double* mean      = this->mean;
+    double* Cov        = this->Cov;
+    double* Corr       = this->Corr;
+    unsigned int bands   = this->bands;
+    unsigned int samples = this->samples;
+    unsigned int lines   = this->lines;
 
     start = std::chrono::high_resolution_clock::now();
 
@@ -82,11 +94,7 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     _queue.wait();
 
     _queue.submit([&](sycl::handler &h) {
-        double* meanSpect = this->meanSpect;
-        double* meanImage = this->meanImage;
-        double* mean      = this->mean;
-
-        h.parallel_for<class image_mean>(sycl::range(bands), [=](auto i) {
+        h.parallel_for<class vd_10>(sycl::range(bands), [=](auto i) {
             mean[i] = 0;
             for(int j = 0; j < N; j++)
                 mean[i] += meanImage[(i*N) + j];
@@ -103,11 +111,7 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     _queue.wait();
 
     _queue.submit([&](sycl::handler &h) {
-        double* meanSpect  = this->meanSpect;
-        double* Cov        = this->Cov;
-        double* Corr       = this->Corr;
-        unsigned int bands = this->bands;
-        h.parallel_for<class correlation>(sycl::range<2>(bands, bands), [=](auto index) {
+        h.parallel_for<class vd_20>(sycl::range<2>(bands, bands), [=](auto index) {
             int i = index[1];
             int j = index[0];
             Corr[(i*bands) + j] = Cov[(i*bands) + j] + (meanSpect[i] * meanSpect[j]);
@@ -121,15 +125,7 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
 
     // Estimation
     _queue.submit([&](sycl::handler &h) {
-        double* CovEigVal    = this->CovEigVal;
-        double* CorrEigVal   = this->CorrEigVal;
-        unsigned int* count  = this->count;
-        double* estimation   = this->estimation;
-        unsigned int bands   = this->bands;
-        unsigned int samples = this->samples;
-        unsigned int lines   = this->lines;
-
-        h.single_task<class foo_estimation>([=]() {
+        h.single_task<class vd_30>([=]() {
             double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
             
             for(int i = 0; i < bands; i++) {
@@ -150,6 +146,6 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    std::cout << "Endmembers = " << endmembers << std::endl;
+    std::cout << "Test = " << endmembers << std::endl;
     std::cout << std::endl << "SYCL VD time = " << tVd << " (s)" << std::endl;
 }

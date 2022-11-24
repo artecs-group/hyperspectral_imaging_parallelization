@@ -51,7 +51,7 @@ void SequentialISRA::run(int maxIter, const double* image, const double* endmemb
     end = std::chrono::high_resolution_clock::now();
     tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    double result = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Sum abundance = " << result << std::endl;
+    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
+    std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "Sequential ISRA time = " << tIsra << " (s)" << std::endl;
 }

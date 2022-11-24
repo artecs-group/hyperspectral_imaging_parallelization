@@ -94,6 +94,6 @@ void SequentialVD::run(const int approxVal, const double* image) {
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    std::cout << "Endmembers = " << endmembers << std::endl;
+    std::cout << "Test = " << endmembers << std::endl;
     std::cout << std::endl << "Sequential VD time = " << tVd << " (s)" << std::endl;
 }

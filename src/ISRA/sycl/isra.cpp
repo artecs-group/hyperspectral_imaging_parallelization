@@ -64,7 +64,7 @@ void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers
         oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, aux, N, endmembers, targetEndmembers, beta, denominator, N);
         _queue.wait();
 
-        _queue.parallel_for(cl::sycl::range<1> (N * targetEndmembers), [=] (cl::sycl::id<1> j){
+        _queue.parallel_for<class isra_10>(cl::sycl::range<1> (N * targetEndmembers), [=] (auto j){
             abundanceMatrix[j] = abundanceMatrix[j] * (numerator[j] / denominator[j]);
         }).wait();
     }
@@ -72,7 +72,7 @@ void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers
     end = std::chrono::high_resolution_clock::now();
     tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    double result = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Sum abundance = " << result << std::endl;
+    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
+    std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "SYCL ISRA time = " << tIsra << " (s)" << std::endl;
 }

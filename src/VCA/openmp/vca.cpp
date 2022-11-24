@@ -301,9 +301,8 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
 
-    int result = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
-
-    std::cout << "Endmembers sum = " << result << std::endl;
+    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
+    std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "OpenMP over CPU, VCA time = " << tVca << " (s)" << std::endl;
 }
 
@@ -643,9 +642,9 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
 
-    int result = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
+    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
 
-    std::cout << "Endmembers sum = " << result << std::endl;
+    std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "OpenMP over GPU, VCA time = " << tVca << " (s)" << std::endl;
 }
 
