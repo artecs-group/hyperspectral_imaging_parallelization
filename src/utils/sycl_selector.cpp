@@ -1,9 +1,9 @@
 #include "sycl_selector.hpp"
 
-static sycl::queue* dev_queue;
+static sycl::queue* dev_queue{nullptr};
 
 sycl::queue get_queue(){
-    if(dev_queue)
+    if(dev_queue != nullptr)
         return *dev_queue;
 
 #if defined(INTEL_GPU)
@@ -25,7 +25,6 @@ sycl::queue get_queue(){
 }
 
 
-void freeQueue() {
-    if(dev_queue)
-        delete[] dev_queue;
+bool isQueueInit(){
+    return dev_queue != nullptr;
 }

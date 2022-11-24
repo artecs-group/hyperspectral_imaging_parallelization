@@ -12,7 +12,8 @@ class SYCL_ISRA: I_ISRA {
         double* getAbundanceMatrix() { return abundanceMatrix; };
     private:
         sycl::queue _queue;
-        double *image, *endmembers;
+        double *image{nullptr}, 
+               *endmembers{nullptr};
 };
 
 #endif

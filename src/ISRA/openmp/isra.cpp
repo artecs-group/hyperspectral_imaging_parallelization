@@ -28,20 +28,16 @@ OpenMP_ISRA::OpenMP_ISRA(int _lines, int _samples, int _bands, unsigned int _tar
 
 
 OpenMP_ISRA::~OpenMP_ISRA() {
-    delete[] abundanceMatrix;
-    delete[] numerator;
-    delete[] denominator;
-    delete[] aux;
+    if(abundanceMatrix != nullptr) delete[] abundanceMatrix;
+    if(numerator != nullptr) delete[] numerator;
+    if(denominator != nullptr) delete[] denominator;
+    if(aux != nullptr) delete[] aux;
 }
 
 
 void OpenMP_ISRA::runOnCPU(int maxIter, const double* image, const double* endmembers) {
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    float tIsra{0.f};
     unsigned int N{lines * samples};
     double alpha{1}, beta{0};
-
-    start = std::chrono::high_resolution_clock::now();
     
     #pragma omp target teams distribute parallel for
     for(int i = 0; i < N*targetEndmembers; i++)
@@ -58,19 +54,10 @@ void OpenMP_ISRA::runOnCPU(int maxIter, const double* image, const double* endme
         for(int j = 0; j < N * targetEndmembers; j++)
             abundanceMatrix[j] = abundanceMatrix[j] * (numerator[j] / denominator[j]);
     }
-
-    end = std::chrono::high_resolution_clock::now();
-    tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-    
-    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "OpenMP over CPU, ISRA time = " << tIsra << " (s)" << std::endl;
 }
 
 
 void OpenMP_ISRA::runOnGPU(int maxIter, const double* image, const double* endmembers) {
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    float tIsra{0.f};
     unsigned int N{lines * samples};
     double alpha{1}, beta{0};
     const int default_dev = omp_get_default_device();
@@ -83,8 +70,6 @@ void OpenMP_ISRA::runOnGPU(int maxIter, const double* image, const double* endme
 	unsigned int samples = this->samples;
 	unsigned int bands = this->bands;
 	unsigned int targetEndmembers = this->targetEndmembers;
-
-    start = std::chrono::high_resolution_clock::now();
     
     #pragma omp target enter data \
     map(to: image[0:bands*N], endmembers[0:targetEndmembers*bands])\
@@ -117,20 +102,23 @@ void OpenMP_ISRA::runOnGPU(int maxIter, const double* image, const double* endme
         }
     }
     #pragma omp target exit data map(from: abundanceMatrix[0:targetEndmembers*N]) device(default_dev)
-
-    end = std::chrono::high_resolution_clock::now();
-    tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-    
-    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "OpenMP over GPU, ISRA time = " << tIsra << " (s)" << std::endl;
 }
 
 
 void OpenMP_ISRA::run(int maxIter, const double* image, const double* endmembers) {
+    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+    float tIsra{0.f};
+
+    start = std::chrono::high_resolution_clock::now();
 #if defined(GPU)
     runOnGPU(maxIter, image, endmembers);
 #else
     runOnCPU(maxIter, image, endmembers);
 #endif
+    end = std::chrono::high_resolution_clock::now();
+    tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
+    
+    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * lines * samples), 0);
+    std::cout << "Test = " << test << std::endl;
+    std::cout << std::endl << "ISRA took = " << tIsra << " (s)" << std::endl;
 }

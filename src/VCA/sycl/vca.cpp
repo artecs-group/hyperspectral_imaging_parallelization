@@ -78,34 +78,37 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 
 
 SYCL_VCA::~SYCL_VCA(){
-    sycl::free(Ud, _queue);
-	sycl::free(x_p, _queue);
-	sycl::free(y, _queue);
-	sycl::free(dImage, _queue);
-	sycl::free(meanImage, _queue);
-	sycl::free(mean, _queue);
-	sycl::free(svdMat, _queue);
-	sycl::free(D, _queue);
-	sycl::free(U, _queue);
-	sycl::free(VT, _queue);
-	sycl::free(endmembers, _queue);
-	sycl::free(Rp, _queue);
-	sycl::free(u, _queue);
-	sycl::free(sumxu, _queue);
-	sycl::free(w, _queue);
-	sycl::free(A, _queue);
-	sycl::free(A2, _queue);
-	sycl::free(aux, _queue);
-	sycl::free(f, _queue);
-    sycl::free(index, _queue);
-	sycl::free(gesvd_scratchpad, _queue);
-	sycl::free(pinv_scratchpad, _queue);
-	sycl::free(pinvS, _queue);
-	sycl::free(pinvU, _queue);
-	sycl::free(pinvVT, _queue);
-	sycl::free(Utranstmp, _queue);
-	sycl::free(dSNR, _queue);
-	sycl::free(sum1Sqrt, _queue);
+	if(!isQueueInit())
+		return;
+
+    if(Ud != nullptr) sycl::free(Ud, _queue);
+	if(x_p != nullptr) sycl::free(x_p, _queue);
+	if(y != nullptr) sycl::free(y, _queue);
+	if(dImage != nullptr) sycl::free(dImage, _queue);
+	if(meanImage != nullptr) sycl::free(meanImage, _queue);
+	if(mean != nullptr) sycl::free(mean, _queue);
+	if(svdMat != nullptr) sycl::free(svdMat, _queue);
+	if(D != nullptr) sycl::free(D, _queue);
+	if(U != nullptr) sycl::free(U, _queue);
+	if(VT != nullptr) sycl::free(VT, _queue);
+	if(endmembers != nullptr) sycl::free(endmembers, _queue);
+	if(Rp != nullptr) sycl::free(Rp, _queue);
+	if(u != nullptr) sycl::free(u, _queue);
+	if(sumxu != nullptr) sycl::free(sumxu, _queue);
+	if(w != nullptr) sycl::free(w, _queue);
+	if(A != nullptr) sycl::free(A, _queue);
+	if(A2 != nullptr) sycl::free(A2, _queue);
+	if(aux != nullptr) sycl::free(aux, _queue);
+	if(f != nullptr) sycl::free(f, _queue);
+    if(index != nullptr) sycl::free(index, _queue);
+	if(gesvd_scratchpad != nullptr) sycl::free(gesvd_scratchpad, _queue);
+	if(pinv_scratchpad != nullptr) sycl::free(pinv_scratchpad, _queue);
+	if(pinvS != nullptr) sycl::free(pinvS, _queue);
+	if(pinvU != nullptr) sycl::free(pinvU, _queue);
+	if(pinvVT != nullptr) sycl::free(pinvVT, _queue);
+	if(Utranstmp != nullptr) sycl::free(Utranstmp, _queue);
+	if(dSNR != nullptr) sycl::free(dSNR, _queue);
+	if(sum1Sqrt != nullptr) sycl::free(sum1Sqrt, _queue);
 }
 
 
@@ -415,5 +418,5 @@ void SYCL_VCA::run(float SNR, const double* image) {
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "SYCL VCA time = " << tVca << " (s)" << std::endl;
+    std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
 }

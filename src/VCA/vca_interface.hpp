@@ -10,9 +10,28 @@ class I_VCA {
 
     protected:
         unsigned int lines, samples, bands, targetEndmembers;
-        unsigned int *index;
-        double *Ud, *x_p, *y, *meanImage, *mean, *svdMat, *D, *U, *VT, 
-               *Rp, *u, *sumxu, *w, *A, *A2, *aux, *f, *endmembers,
-               *pinvS, *pinvU, *pinvVT, *Utranstmp;
+        unsigned int *index{nullptr};
+        double *Ud{nullptr}, 
+               *x_p{nullptr}, 
+               *y{nullptr}, 
+               *meanImage{nullptr}, 
+               *mean{nullptr}, 
+               *svdMat{nullptr}, 
+               *D{nullptr}, 
+               *U{nullptr}, 
+               *VT{nullptr}, 
+               *Rp{nullptr}, 
+               *u{nullptr}, 
+               *sumxu{nullptr}, 
+               *w{nullptr}, 
+               *A{nullptr}, 
+               *A2{nullptr}, 
+               *aux{nullptr}, 
+               *f{nullptr}, 
+               *endmembers{nullptr},
+               *pinvS{nullptr}, 
+               *pinvU{nullptr}, 
+               *pinvVT{nullptr}, 
+               *Utranstmp{nullptr};
 };
 #endif

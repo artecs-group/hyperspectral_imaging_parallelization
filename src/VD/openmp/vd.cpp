@@ -39,30 +39,25 @@ OpenMP_VD::OpenMP_VD(int _lines, int _samples, int _bands){
 
 
 OpenMP_VD::~OpenMP_VD() {
-    delete[] meanSpect;
-    delete[] Cov;
-    delete[] Corr;
-    delete[] CovEigVal;
-    delete[] CorrEigVal;
-    delete[] U;
-    delete[] VT;
-    delete[] count;
-    delete[] count;
-    delete[] estimation;
-    delete[] meanImage;
+    if(meanSpect != nullptr) delete[] meanSpect;
+    if(Cov != nullptr) delete[] Cov;
+    if(Corr != nullptr) delete[] Corr;
+    if(CovEigVal != nullptr) delete[] CovEigVal;
+    if(CorrEigVal != nullptr) delete[] CorrEigVal;
+    if(U != nullptr) delete[] U;
+    if(VT != nullptr) delete[] VT;
+    if(count != nullptr) delete[] count;
+    if(estimation != nullptr) delete[] estimation;
+    if(meanImage != nullptr) delete[] meanImage;
 }
 
 
 void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    float tVd{0.f};
     double* mean = new double[bands];
     const unsigned int N{lines*samples};
     double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
-
-    start = std::chrono::high_resolution_clock::now();
 
     #pragma omp teams distribute
     for(int i = 0; i < bands; i++) {
@@ -105,21 +100,12 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
                 count[j-1]++;
         }
     }
-
     endmembers = count[approxVal-1];
-    end = std::chrono::high_resolution_clock::now();
-    tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-    
-    std::cout << "Endmembers = " << endmembers << std::endl;
-    std::cout << std::endl << "OpenMP over CPU VD time = " << tVd << " (s)" << std::endl;
-
     delete[] mean;
 }
 
 
 void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    float tVd{0.f};
     double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     unsigned int* count = new unsigned int[FPS];
     const unsigned int N{lines*samples};
@@ -137,8 +123,6 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
     double* U = this->U;
     double* VT = this->VT;
     double* meanImage = this->meanImage;
-
-    start = std::chrono::high_resolution_clock::now();
 
     std::fill(count, count+FPS, 0);
 
@@ -204,18 +188,22 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
     #pragma omp target exit data map(from: count[0: FPS]) device(default_dev)
 
     endmembers = count[approxVal-1];
-    end = std::chrono::high_resolution_clock::now();
-    tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-    
-    std::cout << "Test = " << endmembers << std::endl;
-    std::cout << std::endl << "OpenMP over GPU VD time = " << tVd << " (s)" << std::endl;
 }
 
 
 void OpenMP_VD::run(const int approxVal, const double* image) {
+    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+    float tVd{0.f};
+
+    start = std::chrono::high_resolution_clock::now();
 #if defined(GPU)
     runOnGPU(approxVal, image);
 #else
     runOnCPU(approxVal, image);
 #endif
+    end = std::chrono::high_resolution_clock::now();
+    tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
+    
+    std::cout << "Endmembers = " << endmembers << std::endl;
+    std::cout << std::endl << "VD took = " << tVd << " (s)" << std::endl;
 }

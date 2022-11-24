@@ -32,16 +32,16 @@ SequentialVD::SequentialVD(int _lines, int _samples, int _bands){
 
 
 SequentialVD::~SequentialVD() {
-    delete[] meanSpect;
-    delete[] Cov;
-    delete[] Corr;
-    delete[] CovEigVal;
-    delete[] CorrEigVal;
-    delete[] U;
-    delete[] VT;
-    delete[] count;
-    delete[] estimation;
-    delete[] meanImage;
+    if(meanSpect != nullptr) delete[] meanSpect;
+    if(Cov != nullptr) delete[] Cov;
+    if(Corr != nullptr) delete[] Corr;
+    if(CovEigVal != nullptr) delete[] CovEigVal;
+    if(CorrEigVal != nullptr) delete[] CorrEigVal;
+    if(U != nullptr) delete[] U;
+    if(VT != nullptr) delete[] VT;
+    if(count != nullptr) delete[] count;
+    if(estimation != nullptr) delete[] estimation;
+    if(meanImage != nullptr) delete[] meanImage;
 }
 
 
@@ -95,5 +95,5 @@ void SequentialVD::run(const int approxVal, const double* image) {
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
     std::cout << "Test = " << endmembers << std::endl;
-    std::cout << std::endl << "Sequential VD time = " << tVd << " (s)" << std::endl;
+    std::cout << std::endl << "VD took = " << tVd << " (s)" << std::endl;
 }

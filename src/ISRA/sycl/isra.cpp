@@ -28,12 +28,15 @@ SYCL_ISRA::SYCL_ISRA(int _lines, int _samples, int _bands, unsigned int _targetE
 
 
 SYCL_ISRA::~SYCL_ISRA() {
-    sycl::free(abundanceMatrix, _queue);
-    sycl::free(numerator, _queue);
-    sycl::free(denominator, _queue);
-    sycl::free(aux, _queue);
-    sycl::free(image, _queue);
-    sycl::free(endmembers, _queue);
+	if(!isQueueInit())
+		return;
+
+    if(abundanceMatrix != nullptr) sycl::free(abundanceMatrix, _queue);
+    if(numerator != nullptr) sycl::free(numerator, _queue);
+    if(denominator != nullptr) sycl::free(denominator, _queue);
+    if(aux != nullptr) sycl::free(aux, _queue);
+    if(image != nullptr) sycl::free(image, _queue);
+    if(endmembers != nullptr) sycl::free(endmembers, _queue);
 }
 
 
@@ -74,5 +77,5 @@ void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers
     
     double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
     std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "SYCL ISRA time = " << tIsra << " (s)" << std::endl;
+    std::cout << std::endl << "ISRA took = " << tIsra << " (s)" << std::endl;
 }

@@ -7,7 +7,6 @@
 #include "VD/sycl/vd.hpp"
 #include "VCA/sycl/vca.hpp"
 #include "ISRA/sycl/isra.hpp"
-#include "utils/sycl_selector.hpp"
 #elif defined(OPENMP)
 #include "VD/openmp/vd.hpp"
 #include "VCA/openmp/vca.hpp"
@@ -270,22 +269,25 @@ int main(int argc, char* argv[]) {
     float SNR     = atof(argv[3]);
     int maxIter   = atoi(argv[4]);
 
-    std::cout << "Parameters:" << std::endl
+    std::cout << std::endl << "Parameters:" << std::endl
                     << "    -> Lines                    = " << lines << std::endl
                     << "    -> Samples                  = " << samples << std::endl
                     << "    -> Bands                    = " << bands << std::endl
                     << "    -> Approximation value (VD) = " << approxVal << std::endl
                     << "    -> SNR (VCA)                = " << SNR << std::endl
                     << "    -> Max iterations (ISRA)    = " << maxIter << std::endl;
-    std::cout << "Starting image processing ..." << std::endl;
+    std::cout << std::endl << "Starting image processing ";
     start = std::chrono::high_resolution_clock::now();
 
 #if defined(SYCL)
-SYCL_VD vd = SYCL_VD(lines, samples, bands);
+    std::cout << "with SYCL implementation." << std::endl;
+    SYCL_VD vd = SYCL_VD(lines, samples, bands);
 #elif defined(OPENMP)
-OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
+    std::cout << "with OpenMP implementation." << std::endl << std::endl;
+    OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
 #else
-SequentialVD vd = SequentialVD(lines, samples, bands);
+    std::cout << "with sequential implementation." << std::endl << std::endl;
+    SequentialVD vd = SequentialVD(lines, samples, bands);
 #endif
 
     std::cout << "---------------- VD -----------------" << std::endl;
@@ -322,9 +324,5 @@ SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembe
 
 	delete[] image;
 	delete[] wavelength;
-#if defined(SYCL)
-    freeQueue();
-#endif
-    
 	return 0;
 }

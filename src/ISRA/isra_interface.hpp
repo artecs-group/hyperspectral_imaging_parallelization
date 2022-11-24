@@ -7,6 +7,9 @@ class I_ISRA {
         virtual double* getAbundanceMatrix() = 0;
     protected:
         unsigned int lines, samples, bands, targetEndmembers;
-        double *abundanceMatrix, *numerator, *denominator, *aux;
+        double *abundanceMatrix{nullptr}, 
+               *numerator{nullptr}, 
+               *denominator{nullptr}, 
+               *aux{nullptr};
 };
 #endif

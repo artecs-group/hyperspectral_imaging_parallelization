@@ -54,18 +54,21 @@ SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
 
 
 SYCL_VD::~SYCL_VD() {
-    sycl::free(meanSpect, _queue);
-    sycl::free(Cov, _queue);
-    sycl::free(Corr, _queue);
-    sycl::free(CovEigVal, _queue);
-    sycl::free(CorrEigVal, _queue);
-    sycl::free(U, _queue);
-    sycl::free(VT, _queue);
-    sycl::free(estimation, _queue);
-    sycl::free(count, _queue);
-    sycl::free(meanImage, _queue);
-    sycl::free(mean, _queue);
-    sycl::free(gesvd_scratchpad, _queue);
+	if(!isQueueInit())
+		return;
+
+    if(meanSpect != nullptr) sycl::free(meanSpect, _queue);
+    if(Cov != nullptr) sycl::free(Cov, _queue);
+    if(Corr != nullptr) sycl::free(Corr, _queue);
+    if(CovEigVal != nullptr) sycl::free(CovEigVal, _queue);
+    if(CorrEigVal != nullptr) sycl::free(CorrEigVal, _queue);
+    if(U != nullptr) sycl::free(U, _queue);
+    if(VT != nullptr) sycl::free(VT, _queue);
+    if(estimation != nullptr) sycl::free(estimation, _queue);
+    if(count != nullptr) sycl::free(count, _queue);
+    if(meanImage != nullptr) sycl::free(meanImage, _queue);
+    if(mean != nullptr) sycl::free(mean, _queue);
+    if(gesvd_scratchpad != nullptr) sycl::free(gesvd_scratchpad, _queue);
 }
 
 
@@ -147,5 +150,5 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
     std::cout << "Test = " << endmembers << std::endl;
-    std::cout << std::endl << "SYCL VD time = " << tVd << " (s)" << std::endl;
+    std::cout << std::endl << "VD took = " << tVd << " (s)" << std::endl;
 }

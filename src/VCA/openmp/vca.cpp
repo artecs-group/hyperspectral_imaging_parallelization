@@ -47,42 +47,38 @@ OpenMP_VCA::OpenMP_VCA(int _lines, int _samples, int _bands, unsigned int _targe
 
 
 OpenMP_VCA::~OpenMP_VCA(){
-    delete[] Ud;
-	delete[] x_p;
-	delete[] y;
-	delete[] meanImage;
-	delete[] mean;
-	delete[] svdMat;
-	delete[] D;
-	delete[] U;
-	delete[] VT;
-	delete[] endmembers;
-	delete[] Rp;
-	delete[] u;
-	delete[] sumxu;
-	delete[] w;
-	delete[] A;
-	delete[] A2;
-	delete[] aux;
-	delete[] f;
-    delete[] index;
-    delete[] pinvS;
-    delete[] pinvU;
-    delete[] pinvVT;
-    delete[] Utranstmp;
+    if(Ud != nullptr) delete[] Ud;
+	if(x_p != nullptr) delete[] x_p;
+	if(y != nullptr) delete[] y;
+	if(meanImage != nullptr) delete[] meanImage;
+	if(mean != nullptr) delete[] mean;
+	if(svdMat != nullptr) delete[] svdMat;
+	if(D != nullptr) delete[] D;
+	if(U != nullptr) delete[] U;
+	if(VT != nullptr) delete[] VT;
+	if(endmembers != nullptr) delete[] endmembers;
+	if(Rp != nullptr) delete[] Rp;
+	if(u != nullptr) delete[] u;
+	if(sumxu != nullptr) delete[] sumxu;
+	if(w != nullptr) delete[] w;
+	if(A != nullptr) delete[] A;
+	if(A2 != nullptr) delete[] A2;
+	if(aux != nullptr) delete[] aux;
+	if(f != nullptr) delete[] f;
+    if(index != nullptr) delete[] index;
+    if(pinvS != nullptr) delete[] pinvS;
+    if(pinvU != nullptr) delete[] pinvU;
+    if(pinvVT != nullptr) delete[] pinvVT;
+    if(Utranstmp != nullptr) delete[] Utranstmp;
 }
 
 
 void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    float tVca{0.f};
     const unsigned int N{lines*samples};
 	double sum1{0}, sum2{0}, powery, powerx, mult{0}, sum1Sqrt{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
     double superb[bands-1];
     double scarch_pinv[targetEndmembers-1];
-
-    start = std::chrono::high_resolution_clock::now();
 
     // get mean image
 	#pragma omp teams distribute
@@ -297,19 +293,10 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 	    for(int j = 0; j < bands; j++)
 	    	endmembers[j*targetEndmembers + i] = Rp[j + bands * index[i]];
 	}
-
-    end = std::chrono::high_resolution_clock::now();
-    tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-
-    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
-    std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "OpenMP over CPU, VCA time = " << tVca << " (s)" << std::endl;
 }
 
 
 void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    float tVca{0.f};
     const unsigned int N{lines*samples}; 
 	double sum1{0}, sum2{0}, powery, powerx, mult{0}, sum1Sqrt{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
@@ -344,8 +331,6 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 	unsigned int samples = this->samples;
 	unsigned int bands = this->bands;
 	unsigned int targetEndmembers = this->targetEndmembers;
-
-    start = std::chrono::high_resolution_clock::now();
 
 	#pragma omp target enter data \
 	map(to: image[0:bands*lines*samples], mean[0:bands], u[0:targetEndmembers], sumxu[0:lines*samples]) \
@@ -638,21 +623,23 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 		}
 	}
 	#pragma omp target exit data map(from: endmembers[0: targetEndmembers * bands]) device(default_dev)
-
-    end = std::chrono::high_resolution_clock::now();
-    tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-
-    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
-
-    std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "OpenMP over GPU, VCA time = " << tVca << " (s)" << std::endl;
 }
 
 
 void OpenMP_VCA::run(float SNR, const double* image) {
+	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+    float tVca{0.f};
+
+	start = std::chrono::high_resolution_clock::now();
 #if defined(GPU)
     _runOnGPU(SNR, image);
 #else
     _runOnCPU(SNR, image);
 #endif
+    end = std::chrono::high_resolution_clock::now();
+    tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
+
+    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
+    std::cout << "Test = " << test << std::endl;
+    std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
 }

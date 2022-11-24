@@ -12,8 +12,9 @@ class SYCL_VD: I_VD {
         unsigned int getNumberEndmembers() { return endmembers; };
     private:
         sycl::queue _queue;
-        double *mean, *gesvd_scratchpad;
         int64_t _scrach_size;
+        double *mean{nullptr},
+               *gesvd_scratchpad{nullptr};
 };
 
 #endif

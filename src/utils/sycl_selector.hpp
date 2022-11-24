@@ -5,7 +5,7 @@
 #include <iostream>
 
 sycl::queue get_queue();
-void freeQueue();
+bool isQueueInit();
 
 // CUDA device selector
 class NvidiaGPUSelector : public sycl::device_selector {

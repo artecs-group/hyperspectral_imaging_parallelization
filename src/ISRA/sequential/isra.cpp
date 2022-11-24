@@ -21,10 +21,10 @@ SequentialISRA::SequentialISRA(int _lines, int _samples, int _bands, unsigned in
 
 
 SequentialISRA::~SequentialISRA() {
-    delete[] abundanceMatrix;
-    delete[] numerator;
-    delete[] denominator;
-    delete[] aux;
+    if(abundanceMatrix != nullptr) delete[] abundanceMatrix;
+    if(numerator != nullptr) delete[] numerator;
+    if(denominator != nullptr) delete[] denominator;
+    if(aux != nullptr) delete[] aux;
 }
 
 
@@ -53,5 +53,5 @@ void SequentialISRA::run(int maxIter, const double* image, const double* endmemb
     
     double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
     std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "Sequential ISRA time = " << tIsra << " (s)" << std::endl;
+    std::cout << std::endl << "ISRA took = " << tIsra << " (s)" << std::endl;
 }

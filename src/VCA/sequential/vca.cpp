@@ -40,29 +40,29 @@ SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int 
 
 
 SequentialVCA::~SequentialVCA(){
-    delete[] Ud;
-	delete[] x_p;
-	delete[] y;
-	delete[] meanImage;
-	delete[] mean;
-	delete[] svdMat;
-	delete[] D;
-	delete[] U;
-	delete[] VT;
-	delete[] endmembers;
-	delete[] Rp;
-	delete[] u;
-	delete[] sumxu;
-	delete[] w;
-	delete[] A;
-	delete[] A2;
-	delete[] aux;
-	delete[] f;
-    delete[] index;
-    delete[] pinvS;
-    delete[] pinvU;
-    delete[] pinvVT;
-    delete[] Utranstmp;
+    if(Ud != nullptr) delete[] Ud;
+	if(x_p != nullptr) delete[] x_p;
+	if(y != nullptr) delete[] y;
+	if(meanImage != nullptr) delete[] meanImage;
+	if(mean != nullptr) delete[] mean;
+	if(svdMat != nullptr) delete[] svdMat;
+	if(D != nullptr) delete[] D;
+	if(U != nullptr) delete[] U;
+	if(VT != nullptr) delete[] VT;
+	if(endmembers != nullptr) delete[] endmembers;
+	if(Rp != nullptr) delete[] Rp;
+	if(u != nullptr) delete[] u;
+	if(sumxu != nullptr) delete[] sumxu;
+	if(w != nullptr) delete[] w;
+	if(A != nullptr) delete[] A;
+	if(A2 != nullptr) delete[] A2;
+	if(aux != nullptr) delete[] aux;
+	if(f != nullptr) delete[] f;
+    if(index != nullptr) delete[] index;
+    if(pinvS != nullptr) delete[] pinvS;
+    if(pinvU != nullptr) delete[] pinvU;
+    if(pinvVT != nullptr) delete[] pinvVT;
+    if(Utranstmp != nullptr) delete[] Utranstmp;
 }
 
 
@@ -245,5 +245,5 @@ void SequentialVCA::run(float SNR, const double* image) {
 
     int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
-    std::cout << std::endl << "Sequential VCA time = " << tVca << " (s)" << std::endl;
+    std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
 }
