@@ -587,26 +587,6 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 			#pragma omp target map(sum2)
 			{sum2 = std::numeric_limits<double>::min();}
 
-			// #pragma omp target parallel
-			// {
-			// 	double pSum = std::numeric_limits<double>::min();
-			// 	unsigned int pI{0};
-			// 	#pragma omp parallel for
-			// 	for(int j = 0; j < N; j++) {
-			// 		if(pSum < sumxu[j]) {
-			// 			pSum = sumxu[j];
-			// 			pI = j;
-			// 		}
-			// 	}
-			// 	#pragma omp critical
-			// 	{
-			// 		if(pSum > sum2){
-			// 			sum2 = pSum;
-			// 			index[i] = pI;
-			// 		}
-			// 	}
-			// }
-
 			#pragma omp target
 			for(int j = 0; j < N; j++) {
 				if(sum2 < sumxu[j]) {
