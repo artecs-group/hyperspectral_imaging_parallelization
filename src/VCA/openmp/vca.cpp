@@ -333,7 +333,8 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 	unsigned int targetEndmembers = this->targetEndmembers;
 
 	#pragma omp target enter data \
-	map(to: image[0:bands*lines*samples], mean[0:bands], u[0:targetEndmembers], sumxu[0:lines*samples]) \
+	map(to: image[0:bands*lines*samples], mean[0:bands], u[0:targetEndmembers], sumxu[0:lines*samples],\
+		A[0:targetEndmembers*targetEndmembers]) \
 	map(alloc: endmembers[0:targetEndmembers*bands], meanImage[0:bands*lines*samples],\
 		Ud[0:bands*targetEndmembers], x_p[0:lines*samples*targetEndmembers], y[0:lines*samples*targetEndmembers],\
 		svdMat[0:bands*bands], Rp[0:bands*lines*samples], w[0:targetEndmembers],\
@@ -341,7 +342,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 		f[0:targetEndmembers], index[0:targetEndmembers], pinvS[0:targetEndmembers],\
 		pinvU[0:targetEndmembers*targetEndmembers], pinvVT[0:targetEndmembers*targetEndmembers],\
 		Utranstmp[0:targetEndmembers*targetEndmembers], scarch_pinv[0:targetEndmembers-1],\
-		D[0:bands], U[0:bands*bands], VT[0:bands*bands], A[0:targetEndmembers*targetEndmembers]) \
+		D[0:bands], U[0:bands*bands], VT[0:bands*bands]) \
 	device(default_dev)
 	{
 		// get mean image
@@ -514,6 +515,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 			for (size_t i = 0; i < targetEndmembers*targetEndmembers; i++)
 				A2[i] = A[i];
 
+			// Start of computation of the pseudo inverse A
 			#pragma omp target data use_device_ptr(A2, pinvS, pinvU, pinvVT)
 			{
 				LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
@@ -523,7 +525,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 
 			#pragma omp target parallel for reduction(max: maxi)
 			for(int i = 0; i < targetEndmembers; i++)
-				maxi = (maxi < pinvS[i]) ? pinvS[i] : maxi;
+				maxi = std::max(pinvS[i], maxi);
 			#pragma omp target update from(maxi)
 
 			double tolerance = EPSILON * targetEndmembers * maxi;
