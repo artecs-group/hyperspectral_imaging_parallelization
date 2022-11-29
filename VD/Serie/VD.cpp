@@ -4,6 +4,8 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <numeric>
+#include <iostream>
 
 #include <sys/time.h>
 
@@ -239,6 +241,8 @@ int loadImage(char* filename, double* image, int lines, int samples, int bands, 
                             image[j*lines*samples + (i*samples+k)] = tipo_float[k+samples*(i*bands+j)];
                 break;
         }
+        int test = std::accumulate(image, image + (lines * samples * bands), 0);
+        std::cout << "Test = " << test << std::endl;
         free(tipo_float);
         return 0;
     }

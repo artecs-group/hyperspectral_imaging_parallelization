@@ -1,7 +1,9 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <chrono>
+#include <numeric>
 
 #if defined(SYCL)
 #include "VD/sycl/vd.hpp"
@@ -71,7 +73,6 @@ int readHeader1(const std::string& filename, int* lines, int* samples, int* band
 
 
 int readHeader2(std::string filename, double* wavelength) {
-    std::cout << "readHeader2" << std::endl;
     std::string line;
     std::string value;
     std::string strAll;
@@ -90,6 +91,7 @@ int readHeader2(std::string filename, double* wavelength) {
                 std::getline(inFile, line);
                 cleanString(line, &value);
                 strAll += value;
+                value = "";
             } while (line.find("}") != std::string::npos);
 
             int dPos{0};
@@ -108,7 +110,6 @@ int readHeader2(std::string filename, double* wavelength) {
 
 template <typename T>
 void convertToFloat(unsigned int lines_samples, int bands, std::ifstream& inFile, float* type_float){
-    std::cout << "convertToFloat" << std::endl;
     T* typeValue = new T[lines_samples*bands];
     for(int i = 0; i < lines_samples * bands; i++) {
         inFile >> typeValue[i];
@@ -124,36 +125,52 @@ void convertToFloat(unsigned int lines_samples, int bands, std::ifstream& inFile
 int loadImage(const std::string& filename, double* image, int lines, int samples, 
     int bands, int dataType, std::string* interleave) {
     
-    std::cout << "loadImage" << std::endl;
     float *type_float;
     int op{0};
     unsigned int lines_samples = lines*samples;
     short int* tv;
     std::ifstream inFile;
-    inFile.open(filename, std::ios::in);
+    inFile.open(filename, std::ifstream::in);
 
     if(!inFile.is_open())
         return -2; //No file found
 
     type_float = new float[lines_samples*bands];
     
-    switch(dataType) {
-        case 2:
-            convertToFloat<short>(lines_samples, bands, inFile, type_float);
-            break;
-        case 4:
-            convertToFloat<float>(lines_samples, bands, inFile, type_float);
-            break;
-        case 5:
-            convertToFloat<double>(lines_samples, bands, inFile, type_float);
-            break;
-        case 12:
-            convertToFloat<unsigned int>(lines_samples, bands, inFile, type_float);
-            break;
-        default:
-            break;
+    // switch(dataType) {
+    //     case 2:
+    //         //convertToFloat<short>(lines_samples, bands, inFile, type_float);
+    //         short* typeValue = new short[lines_samples*bands];
+    //         for(int i = 0; i < lines_samples * bands; i++) {
+    //             inFile >> typeValue[i];
+    //             type_float[i] = (float) typeValue[i];
+    //         }
+    //         delete[] typeValue;
+    //         break;
+    //     case 4:
+    //         convertToFloat<float>(lines_samples, bands, inFile, type_float);
+    //         break;
+    //     case 5:
+    //         convertToFloat<double>(lines_samples, bands, inFile, type_float);
+    //         break;
+    //     case 12:
+    //         convertToFloat<unsigned int>(lines_samples, bands, inFile, type_float);
+    //         break;
+    // }
+    short* typeValue = new short[lines_samples*bands];
+    std::string line;
+    int i{0};
+    while(std::getline(inFile, line) && i < lines_samples*bands) {
+        std::istringstream iss(line);
+        while(iss >> typeValue[i]) {
+            type_float[i] = (float) typeValue[i];
+        }
+        i++;
     }
+    delete[] typeValue;
     inFile.close();
+    int test = std::accumulate(type_float, type_float + (lines * samples * bands), 0);
+    std::cout << "Test = " << test << std::endl;
 
     if(*interleave == "bsq") op = 0;
     else if(*interleave == "bip") op = 1;
@@ -180,7 +197,6 @@ int loadImage(const std::string& filename, double* image, int lines, int samples
     }
     delete[] type_float;
     return 0;
-    
 }
 
 
@@ -365,14 +381,14 @@ int main(int argc, char* argv[]) {
 	}
 
     // Read header wavelenght, which requires bands from previous read
-    double* wavelength = new double[bands];
+    double* wavelength = new double[bands]();
     error = readHeader2(filename, wavelength);
 	if(error != 0) {
         std::cerr << "Error reading wavelength from header file: " << filename << std::endl; 
 		exit(-1);
 	}
 
-	double *image = new double[lines*samples*bands];
+	double *image = new double[lines*samples*bands]();
     filename = argv[1];
 	error = loadImage(filename, image, lines, samples, bands, dataType, &interleave);
 	if(error != 0) {
