@@ -112,7 +112,7 @@ template <typename T>
 void convertToFloat(unsigned int lines_samples, int bands, std::ifstream& inFile, float* type_float){
     T* typeValue = new T[lines_samples*bands];
     for(int i = 0; i < lines_samples * bands; i++) {
-        inFile >> typeValue[i];
+        inFile.read(reinterpret_cast<char*>(&typeValue[i]), sizeof(T));
         type_float[i] = (float) typeValue[i];
     }
     delete[] typeValue;
@@ -130,47 +130,28 @@ int loadImage(const std::string& filename, double* image, int lines, int samples
     unsigned int lines_samples = lines*samples;
     short int* tv;
     std::ifstream inFile;
-    inFile.open(filename, std::ifstream::in);
+    inFile.open(filename, std::ifstream::binary);
 
     if(!inFile.is_open())
         return -2; //No file found
 
     type_float = new float[lines_samples*bands];
     
-    // switch(dataType) {
-    //     case 2:
-    //         //convertToFloat<short>(lines_samples, bands, inFile, type_float);
-    //         short* typeValue = new short[lines_samples*bands];
-    //         for(int i = 0; i < lines_samples * bands; i++) {
-    //             inFile >> typeValue[i];
-    //             type_float[i] = (float) typeValue[i];
-    //         }
-    //         delete[] typeValue;
-    //         break;
-    //     case 4:
-    //         convertToFloat<float>(lines_samples, bands, inFile, type_float);
-    //         break;
-    //     case 5:
-    //         convertToFloat<double>(lines_samples, bands, inFile, type_float);
-    //         break;
-    //     case 12:
-    //         convertToFloat<unsigned int>(lines_samples, bands, inFile, type_float);
-    //         break;
-    // }
-    short* typeValue = new short[lines_samples*bands];
-    std::string line;
-    int i{0};
-    while(std::getline(inFile, line) && i < lines_samples*bands) {
-        std::istringstream iss(line);
-        while(iss >> typeValue[i]) {
-            type_float[i] = (float) typeValue[i];
-        }
-        i++;
+    switch(dataType) {
+        case 2:
+            convertToFloat<short>(lines_samples, bands, inFile, type_float);
+            break;
+        case 4:
+            convertToFloat<float>(lines_samples, bands, inFile, type_float);
+            break;
+        case 5:
+            convertToFloat<double>(lines_samples, bands, inFile, type_float);
+            break;
+        case 12:
+            convertToFloat<unsigned int>(lines_samples, bands, inFile, type_float);
+            break;
     }
-    delete[] typeValue;
     inFile.close();
-    int test = std::accumulate(type_float, type_float + (lines * samples * bands), 0);
-    std::cout << "Test = " << test << std::endl;
 
     if(*interleave == "bsq") op = 0;
     else if(*interleave == "bip") op = 1;
