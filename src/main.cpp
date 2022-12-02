@@ -180,161 +180,115 @@ int loadImage(const std::string& filename, double* image, int lines, int samples
     return 0;
 }
 
+template <typename T>
+int parseAndWriteImage(int lines, int samples, int bands, int op, const std::string& filename, const double* image, T* imageT){
+    std::ofstream outFile;
+    outFile.open(filename, std::ofstream::binary);
 
-// /*
-//  * Author: Luis Ignacio Jimenez
-//  * Centre: Universidad de Extremadura
-//  * */
-// int writeResult(double *image, const std::string* filename, int lines, int samples, int bands, int dataType, std::string* interleave)
-// {
+    if(!outFile.is_open())
+        return -3; //No file found
 
-// 	short int *imageSI;
-// 	float *imageF;
-// 	double *imageD;
+    switch(op) {
+        case 0:
+            for(int i = 0; i < lines*samples*bands; i++){
+                imageT[i] = (T)image[i];
+                outFile.write(reinterpret_cast<char*>(&imageT[i]), sizeof(T));
+            }
+            break;
 
-// 	int i,j,k,op;
+        case 1:
+            for(int i = 0; i < bands; i++)
+                for(int j = 0; j < lines*samples; j++){
+                    imageT[j*bands + i] = (T)image[i*lines*samples + j];
+                    outFile.write(reinterpret_cast<char*>(&imageT[j*bands + i]), sizeof(T));
+                }
+            break;
 
-// 	if(interleave == NULL)
-// 		op = 0;
-// 	else
-// 	{
-// 		if(strcmp(interleave, "bsq") == 0) op = 0;
-// 		if(strcmp(interleave, "bip") == 0) op = 1;
-// 		if(strcmp(interleave, "bil") == 0) op = 2;
-// 	}
-
-// 	if(dataType == 2)
-// 	{
-// 		imageSI = (short int*)malloc(lines*samples*bands*sizeof(short int));
-
-//         switch(op)
-//         {
-// 			case 0:
-// 				for(i=0; i<lines*samples*bands; i++)
-// 					imageSI[i] = (short int)image[i];
-// 				break;
-
-// 			case 1:
-// 				for(i=0; i<bands; i++)
-// 					for(j=0; j<lines*samples; j++)
-// 						imageSI[j*bands + i] = (short int)image[i*lines*samples + j];
-// 				break;
-
-// 			case 2:
-// 				for(i=0; i<lines; i++)
-// 					for(j=0; j<bands; j++)
-// 						for(k=0; k<samples; k++)
-// 							imageSI[i*bands*samples + (j*samples + k)] = (short int)image[j*lines*samples + (i*samples + k)];
-// 				break;
-//         }
-
-// 	}
-
-// 	if(dataType == 4)
-// 	{
-// 		imageF = (float*)malloc(lines*samples*bands*sizeof(float));
-//         switch(op)
-//         {
-// 			case 0:
-// 				for(i=0; i<lines*samples*bands; i++)
-// 					imageF[i] = (float)image[i];
-// 				break;
-
-// 			case 1:
-// 				for(i=0; i<bands; i++)
-// 					for(j=0; j<lines*samples; j++)
-// 						imageF[j*bands + i] = (float)image[i*lines*samples + j];
-// 				break;
-
-// 			case 2:
-// 				for(i=0; i<lines; i++)
-// 					for(j=0; j<bands; j++)
-// 						for(k=0; k<samples; k++)
-// 							imageF[i*bands*samples + (j*samples + k)] = (float)image[j*lines*samples + (i*samples + k)];
-// 				break;
-//         }
-// 	}
-
-// 	if(dataType == 5)
-// 	{
-// 		imageD = (double*)malloc(lines*samples*bands*sizeof(double));
-//         switch(op)
-//         {
-// 			case 0:
-// 				for(i=0; i<lines*samples*bands; i++)
-// 					imageD[i] = image[i];
-// 				break;
-
-// 			case 1:
-// 				for(i=0; i<bands; i++)
-// 					for(j=0; j<lines*samples; j++)
-// 						imageD[j*bands + i] = image[i*lines*samples + j];
-// 				break;
-
-// 			case 2:
-// 				for(i=0; i<lines; i++)
-// 					for(j=0; j<bands; j++)
-// 						for(k=0; k<samples; k++)
-// 							imageD[i*bands*samples + (j*samples + k)] = image[j*lines*samples + (i*samples + k)];
-// 				break;
-//         }
-// 	}
-
-//     FILE *fp;
-//     if ((fp=fopen(filename,"wb"))!=NULL)
-//     {
-//         fseek(fp,0L,SEEK_SET);
-// 	    switch(dataType)
-// 	    {
-// 	    case 2: fwrite(imageSI,1,(lines*samples*bands * sizeof(short int)),fp); free(imageSI); break;
-// 	    case 4: fwrite(imageF,1,(lines*samples*bands * sizeof(float)),fp); free(imageF); break;
-// 	    case 5: fwrite(imageD,1,(lines*samples*bands * sizeof(double)),fp); free(imageD); break;
-// 	    }
-// 	    fclose(fp);
+        case 2:
+            for(int i = 0; i < lines; i++)
+                for(int j = 0; j < bands; j++)
+                    for(int k = 0; k < samples; k++){
+                        imageT[i*bands*samples + (j*samples + k)] = (T)image[j*lines*samples + (i*samples + k)];
+                        outFile.write(reinterpret_cast<char*>(&imageT[i*bands*samples + (j*samples + k)]), sizeof(T));
+                    }
+            break;
+    }
+    
+    outFile.close();
+    delete[] imageT;
+    return 0;
+}
 
 
-// 	    return 0;
-//     }
+/*
+ * Author: Luis Ignacio Jimenez & Youssef El Faqir El Rhazoui
+ * */
+int writeResult(double* image, const std::string& filename, int lines, int samples,
+    int bands, int dataType, const std::string& interleave)
+{
+	short int* imageSI;
+	float* imageF;
+	double* imageD;
+	int op{0};
 
-//     return -3;
-// }
+    if(interleave == "bsq") op = 0;
+    else if(interleave == "bip") op = 1;
+    else if(interleave == "bil") op = 2;
 
-// /*
-//  * Author: Luis Ignacio Jimenez
-//  * Centre: Universidad de Extremadura
-//  * */
-// int writeHeader(std::string* filename, int lines, int samples, int bands, int dataType,
-// 		std::string* interleave, int byteOrder, std::string* waveUnit, double* wavelength)
-// {
-//     FILE *fp;
-//     if ((fp=fopen(filename,"wt"))!=NULL)
-//     {
-// 		fseek(fp,0L,SEEK_SET);
-// 		fprintf(fp,"ENVI\ndescription = {\nExported from MATLAB}\n");
-// 		if(samples != 0) fprintf(fp,"samples = %d", samples);
-// 		if(lines != 0) fprintf(fp,"\nlines   = %d", lines);
-// 		if(bands != 0) fprintf(fp,"\nbands   = %d", bands);
-// 		if(dataType != 0) fprintf(fp,"\ndata type = %d", dataType);
-// 		if(interleave != NULL) fprintf(fp,"\ninterleave = %s", interleave);
-// 		if(byteOrder != 0) fprintf(fp,"\nbyte order = %d", byteOrder);
-// 		if(waveUnit != NULL) fprintf(fp,"\nwavelength units = %s", waveUnit);
-// 		if(waveUnit != NULL)
-// 		{
-// 			fprintf(fp,"\nwavelength = {\n");
-// 			for(int i=0; i<bands; i++)
-// 			{
-// 				if(i==0) fprintf(fp, "%f", wavelength[i]);
-// 				else
-// 					if(i%3 == 0) fprintf(fp, ", %f\n", wavelength[i]);
-// 					else fprintf(fp, ", %f", wavelength[i]);
-// 			}
-// 			fprintf(fp,"}");
-// 		}
-// 		fclose(fp);
-// 		return 0;
-//     }
-//     return -3;
-// }
+	if(dataType == 2) {
+		imageSI = new short int[lines*samples*bands];
+        return parseAndWriteImage(lines, samples, bands, op, filename, image, imageSI);
+	}
+
+	else if(dataType == 4) {
+		imageF = new float[lines*samples*bands];
+        return parseAndWriteImage(lines, samples, bands, op, filename, image, imageF);
+	}
+
+	else if(dataType == 5) {
+		imageD = new double[lines*samples*bands];
+        return parseAndWriteImage(lines, samples, bands, op, filename, image, imageD);
+	}
+    return 0;
+}
+
+/*
+ * Author: Luis Ignacio Jimenez & Youssef El Faqir El Rhazoui
+ * */
+int writeHeader(const std::string& filename, int lines, int samples, int bands, int dataType,
+		const std::string& interleave, int byteOrder, const std::string& waveUnit, double* wavelength)
+{
+
+    std::ofstream outFile;
+    outFile.open(filename, std::ofstream::out);
+
+    if(!outFile.is_open())
+        return -3; //No file found
+
+    outFile << "ENVI" << std::endl 
+            << "description = {" << std::endl 
+            << "Exported from MATLAB}" << std::endl;
+
+    if(samples != 0)  outFile << "samples = " << samples << std::endl;
+    if(lines != 0)    outFile << "lines   = " << lines << std::endl;
+    if(bands != 0)    outFile << "bands   = " << bands << std::endl;
+    if(dataType != 0) outFile << "data type = " << dataType << std::endl;
+    if(interleave.length() == 0) outFile << "interleave = " << interleave << std::endl;
+    if(byteOrder != 0) outFile << "byte order = " << byteOrder << std::endl;
+    if(waveUnit.length() == 0) {
+        outFile << "wavelength units = " << waveUnit << std::endl
+                << "wavelength = {" << std::endl;
+        for(int i = 0; i < bands; i++) {
+            if(i == 0) outFile << wavelength[i];
+            else
+                if(i % 3 == 0) outFile << ", " << wavelength[i] << std::endl;
+                else outFile << ", " << wavelength[i];
+        }
+        outFile << "}";
+    }
+    outFile.close();
+    return 0;
+}
 
 
 int main(int argc, char* argv[]) {
@@ -433,25 +387,23 @@ SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembe
     end = std::chrono::high_resolution_clock::now();
     appTime += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     std::cout << "Image processing took = " << appTime << " (s)" << std::endl;
-    std::cout << "Writing results on: " << std::endl;
 
-    // strcpy(filename, argv[1]);
-	// strcat(filename, "_processed.hdr");
-	// error = writeHeader(filename, samples, lines, vd.getNumberEndmembers(), 4, interleave, 0, NULL, NULL);
-	// if(error != 0) {
-	// 	printf("Error writing endmembers header file: %s.", filename);
-    //     std::cerr << "Error writing image processed on: " << filename << std::cout;
-	// 	fflush(stdout);
-	// 	return error;
-	// }
+    filename = argv[1];
+    filename += "_processed.hdr";
+    std::cout << "Writing results on: " << filename << std::endl;
+	error = writeHeader(filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave, byteOrder, waveUnit, wavelength);
+	if(error != 0) {
+        std::cerr << "Error writing endmembers header file on: " << filename << std::endl;
+		return error;
+	}
 
-	// error = writeResult(isra.getAbundanceMatrix(), argv[4],samples,lines, vd.getNumberEndmembers(), 4, interleave);
-	// if(error != 0)
-	// {
-	// 	printf("EXECUTION ERROR ISRA Iterative: Error writing endmembers file: %s.", argv[4]);
-	// 	fflush(stdout);
-	// 	return error;
-	// }
+    filename = argv[1];
+    filename += "_processed";
+	error = writeResult(isra.getAbundanceMatrix(), filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave);
+	if(error != 0) {
+        std::cerr << "Error writing endmembers file on: " << filename << std::endl;
+		return error;
+	}
 
 	delete[] image;
 	delete[] wavelength;
