@@ -1,0 +1,53 @@
+DEVICE = cpu # cpu, igpu, nvidia
+DEBUG = no # yes, no
+
+# Default compiler and flags
+CC = icpx
+CFLAGS = -I"${MKLROOT}/include" -qmkl -DMKL_ILP64
+CLINK = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -lm -ldl
+
+ifeq ($(DEVICE),igpu)
+    CFLAGS += -DGPU -fiopenmp -fopenmp-targets=spir64
+    CLINK = -fiopenmp -fopenmp-targets=spir64 -fsycl -L${MKLROOT}/lib/intel64 -lmkl_sycl -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl
+else ifeq ($(DEVICE),nvidia)
+    CC = nvc++
+    CFLAGS = -DGPU -DNVIDIA_GPU -I/usr/local/cuda/include -lcuda -lcublas -lcusolver -fopenmp -mp=gpu
+    CLINK = -L/usr/local/cuda/lib64 -lcudart
+else
+    CFLAGS += -DCPU -xhost
+endif
+
+CFLAGS += -DOPENMP
+
+# Debug Flags
+ifeq ($(DEBUG),yes)
+ CFLAGS += -g -O0
+else
+ CFLAGS += -O3
+endif
+
+main_openmp: ./VCA/openmp/vca.o ./VD/openmp/vd.o ./ISRA/openmp/isra.o main.o
+	$(CC) $(CFLAGS) $(CLINK) main.o ./VD/openmp/vd.o ./VCA/openmp/vca.o ./ISRA/openmp/isra.o -o main_openmp
+
+main.o: ./VCA/openmp/vca.o ./VD/openmp/vd.o
+	$(CC) $(CFLAGS) main.cpp -c -o main.o
+
+./VD/openmp/vd.o:
+	$(CC) $(CFLAGS) ./VD/openmp/vd.cpp -c -o ./VD/openmp/vd.o
+
+./VCA/openmp/vca.o:
+	$(CC) $(CFLAGS) ./VCA/openmp/vca.cpp -c -o ./VCA/openmp/vca.o
+
+./ISRA/openmp/isra.o:
+	$(CC) $(CFLAGS) ./ISRA/openmp/isra.cpp -c -o ./ISRA/openmp/isra.o
+
+run: main_openmp
+	./main_openmp ../data/Cuprite 5 0 5
+
+.PHONY: clean
+clean:
+	rm -f main_openmp \
+	*.o \
+	./VD/openmp/*.o \
+	./VCA/openmp/*.o \
+	./ISRA/openmp/*.o
