@@ -3,6 +3,7 @@
 #include <chrono>
 #include <numeric>
 #include <algorithm>
+#include <random>
 #include "mkl.h"
 
 #include "./vca.hpp"
@@ -74,6 +75,9 @@ void SequentialVCA::run(float SNR, const double* image) {
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
     double superb[bands-1];
     double scarch_pinv[targetEndmembers-1];
+	std::uint64_t seed{0};
+	VSLStreamStatePtr rdstream;
+	vslNewStream(&rdstream, VSL_BRNG_MT19937, seed);
 
     start = std::chrono::high_resolution_clock::now();
     // get mean image
@@ -181,10 +185,7 @@ void SequentialVCA::run(float SNR, const double* image) {
 	A[(targetEndmembers-1) * targetEndmembers] = 1;
 
 	for(int i = 0; i < targetEndmembers; i++) {
-		for(int j = 0; j < targetEndmembers; j++) {
-			w[j] = 16000 % std::numeric_limits<int>::max(); // Cambiamos el valor rand() por un valor fijo 16000
-			w[j] /= std::numeric_limits<int>::max();
-		}
+		vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER, rdstream, targetEndmembers, w, 0.0, 1.0);
 
         std::copy(A, A + targetEndmembers*targetEndmembers, A2);
 
@@ -246,4 +247,5 @@ void SequentialVCA::run(float SNR, const double* image) {
     int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
     std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
+	vslDeleteStream(&rdstream);
 }

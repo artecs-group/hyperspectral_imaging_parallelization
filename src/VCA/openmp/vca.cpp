@@ -7,6 +7,7 @@
 
 #if defined(NVIDIA_GPU)
 #include "cublas.h"
+#include <curand.h>
 #else
 #include "mkl.h"
 #include "mkl_omp_offload.h"
@@ -79,6 +80,9 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
     double superb[bands-1];
     double scarch_pinv[targetEndmembers-1];
+	std::uint64_t seed{0};
+	VSLStreamStatePtr generator;
+	vslNewStream(&generator, VSL_BRNG_MT19937, seed);
 
     // get mean image
 	#pragma omp teams distribute
@@ -205,10 +209,17 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 
 	for(int i = 0; i < targetEndmembers; i++) {
 
-		#pragma omp teams distribute parallel for
-		for(int j = 0; j < targetEndmembers; j++) {
-			w[j] = 16000 % std::numeric_limits<int>::max(); // Cambiamos el valor rand() por un valor fijo 16000
-			w[j] /= std::numeric_limits<int>::max();
+		#pragma omp parallel
+		{
+			const int nthreads = omp_get_num_threads();
+			const int tid = omp_get_thread_num();
+			vdRngGaussian(
+				VSL_RNG_METHOD_GAUSSIAN_BOXMULLER, 
+				generator, 
+				targetEndmembers/nthreads, 
+				w + tid * targetEndmembers / nthreads, 
+				0.0, 
+				1.0);
 		}
 
         #pragma omp teams distribute parallel for
@@ -303,6 +314,15 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
     double superb[bands-1];
 	const int default_dev = omp_get_default_device();
     double scarch_pinv[targetEndmembers-1];
+	std::uint64_t seed{0};
+#if defined(NVIDIA_GPU)
+    curandGenerator_t generator;
+    curandCreateGenerator(&generator, CURAND_RNG_PSEUDO_MT19937);
+    curandSetPseudoRandomGeneratorSeed(generator, seed);
+#else
+	VSLStreamStatePtr generator;
+	vslNewStream(&generator, VSL_BRNG_MT19937, seed);
+#endif
 
     double* Ud = this->Ud;
 	double* x_p = this->x_p;
@@ -504,11 +524,13 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 		}
 
 		for(int i = 0; i < targetEndmembers; i++) {
-
 			#pragma omp target teams distribute parallel for
-			for(int j = 0; j < targetEndmembers; j++) {
-				w[j] = 16000 % std::numeric_limits<int>::max(); // Cambiamos el valor rand() por un valor fijo 16000
-				w[j] /= std::numeric_limits<int>::max();
+			for (size_t i = 0; i < targetEndmembers; i++) {
+#if defined(NVIDIA_GPU)
+				w[i] = curand_normal_double(generator, 0.0, 1.0);
+#else
+				vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER, generator, 1, w + i, 0.0, 1.0);
+#endif
 			}
 
 			#pragma omp target teams distribute parallel for
@@ -605,6 +627,11 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 		}
 	}
 	#pragma omp target exit data map(from: endmembers[0: targetEndmembers * bands]) device(default_dev)
+#if defined(NVIDIA_GPU)
+	curandDestroyGenerator(generator);
+#else
+	vslDeleteStream(&generator);
+#endif
 }
 
 

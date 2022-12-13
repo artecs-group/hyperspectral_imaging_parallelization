@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <CL/sycl.hpp>
 #include "oneapi/mkl.hpp"
+#include "oneapi/mkl/rng.hpp"
 
 #include "./vca.hpp"
 
@@ -118,6 +119,11 @@ void SYCL_VCA::run(float SNR, const double* image) {
     unsigned int N{lines*samples};
 	double alpha{1.0f}, beta{0.f};
     const double SNR_th{15 + 10 * std::log10(targetEndmembers)};
+
+	std::uint64_t seed{0};
+	oneapi::mkl::rng::mt19937 engine(_queue, seed);
+	oneapi::mkl::rng::gaussian<double, oneapi::mkl::rng::gaussian_method::box_muller> distr(0.0, 1.0);
+
 
     double* Ud = this->Ud;
 	double* x_p = this->x_p;
@@ -315,13 +321,15 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	}
 
 	for(int i = 0; i < targetEndmembers; i++) {
-		_queue.submit([&](cl::sycl::handler &h) {
+		oneapi::mkl::rng::generate(distr, engine, targetEndmembers, w);
+		_queue.wait();
+		/*_queue.submit([&](cl::sycl::handler &h) {
 			int imax = std::numeric_limits<int>::max();
 			h.parallel_for<class vca_140>(cl::sycl::range(targetEndmembers), [=](auto j) {
 				w[j]  = 16000 % imax; // Cambiamos el valor rand() por un valor fijo 16000
 				w[j] /= imax;
 			});
-		}).wait();
+		}).wait();*/
 		
 		_queue.memcpy(A2, A, sizeof(double)*targetEndmembers*targetEndmembers);
     	_queue.wait();
