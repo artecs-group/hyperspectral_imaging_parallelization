@@ -12,6 +12,7 @@ class OpenMP_VD: I_VD {
     private:
         void runOnCPU(const int approxVal, const double* image);
         void runOnGPU(const int approxVal, const double* image);
+        double* mean;
 };
 
 #endif

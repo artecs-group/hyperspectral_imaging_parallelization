@@ -39,7 +39,7 @@ void OpenMP_ISRA::runOnCPU(int maxIter, const double* image, const double* endme
     unsigned int N{lines * samples};
     double alpha{1}, beta{0};
     
-    #pragma omp target teams distribute parallel for
+    #pragma omp target teams distribute parallel for simd
     for(int i = 0; i < N*targetEndmembers; i++)
         abundanceMatrix[i] = 1;
 
@@ -50,7 +50,7 @@ void OpenMP_ISRA::runOnCPU(int maxIter, const double* image, const double* endme
 
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, aux, N, endmembers, targetEndmembers, beta, denominator, N);
 
-        #pragma omp teams distribute parallel for
+        #pragma omp teams distribute parallel for simd
         for(int j = 0; j < N * targetEndmembers; j++)
             abundanceMatrix[j] = abundanceMatrix[j] * (numerator[j] / denominator[j]);
     }

@@ -28,6 +28,7 @@ OpenMP_VD::OpenMP_VD(int _lines, int _samples, int _bands){
     count      = new unsigned int[FPS];
     estimation = new double[FPS];
     meanImage  = new double [lines * samples * bands];
+    mean       = new double[bands];
 
     // table where find the estimation by FPS
     estimation[0] = 0.906193802436823;
@@ -49,27 +50,29 @@ OpenMP_VD::~OpenMP_VD() {
     if(count != nullptr) delete[] count;
     if(estimation != nullptr) delete[] estimation;
     if(meanImage != nullptr) delete[] meanImage;
+    if(mean != nullptr) delete[] mean;
 }
 
 
 void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
-    double* mean = new double[bands];
     const unsigned int N{lines*samples};
     double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
 
-    #pragma omp teams distribute
+    #pragma omp parallel for
     for(int i = 0; i < bands; i++) {
 		mean[i] = 0.f;
-        #pragma omp single
+        #pragma omp simd reduction(+: mean[i])
         for(int j = 0; j < N; j++)
 			mean[i] += image[(i*N) + j];
 
 		mean[i] /= N;
         meanSpect[i] = mean[i];
+	}
 
-        #pragma omp parallel for
+    #pragma omp parallel for simd
+    for(int i = 0; i < bands; i++) {
         for(int j = 0; j < N; j++)
 			meanImage[i*N + j] = image[i*N + j] - mean[i];
 	}
@@ -77,7 +80,7 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
     cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
 
 	//correlation
-    #pragma omp teams distribute parallel for collapse(2)
+    #pragma omp teams distribute parallel for simd collapse(2)
     for(int j = 0; j < bands; j++)
         for(int i = 0; i < bands; i++)
         	Corr[i*bands + j] = Cov[i*bands + j]+(meanSpect[i] * meanSpect[j]);
@@ -87,26 +90,32 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
     LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
 
     //estimation
-    std::fill(count, count+FPS, 0);
+    #pragma omp parallel for simd
+    for (size_t i = 0; i < FPS; i++)
+        count[i] = 0;
 
+    #pragma omp parallel for simd
     for(int i = 0; i < bands; i++) {
+        const double testChecker = CorrEigVal[i] - CovEigVal[i];
     	sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * 2 / samples / lines;
-    	sigmaTest = sqrt(sigmaSquareTest);
+    	sigmaTest = std::sqrt(sigmaSquareTest);
 
+        #pragma omp parallel for
     	for(int j = 1; j <= FPS; j++) {
             TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
-
-            if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)
-                count[j-1]++;
+            #pragma omp critical
+            {
+                if(TaoTest < testChecker)
+                    count[j-1]++;
+            }
         }
     }
     endmembers = count[approxVal-1];
-    delete[] mean;
 }
 
 
 void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
-    double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
+    double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     unsigned int* count = new unsigned int[FPS];
     const unsigned int N{lines*samples};
     const double alpha{(double) 1/N}, beta{0};
@@ -134,19 +143,21 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
         U[0:bands*bands], VT[0:bands*bands], superb[0:bands-1], \
         meanImage[0:lines*samples*bands]) device(default_dev)
     {    
-        #pragma omp target teams distribute private(mean) device(default_dev)
+        #pragma omp target teams distribute parallel for
         for(int i = 0; i < bands; i++) {
-            mean = 0.f;
-            #pragma omp single
+            mean[i] = 0.f;
+            #pragma omp simd reduction(+: mean[i])
             for(int j = 0; j < N; j++)
-                mean += image[(i*N) + j];
+                mean[i] += image[(i*N) + j];
 
-            mean /= N;
-            meanSpect[i] = mean;
+            mean[i] /= N;
+            meanSpect[i] = mean[i];
+        }
 
-            #pragma omp parallel for
+        #pragma omp target teams distribute parallel for simd
+        for(int i = 0; i < bands; i++) {
             for(int j = 0; j < N; j++)
-                meanImage[i*N + j] = image[i*N + j] - mean;
+                meanImage[i*N + j] = image[i*N + j] - mean[i];
         }
 
         #pragma omp target data use_device_ptr(meanImage, Cov) device(default_dev)
@@ -172,16 +183,20 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
         }
 
         //estimation
-        #pragma omp target device(default_dev)
+        #pragma omp target teams distribute device(default_dev)
         for(int i = 0; i < bands; i++) {
+            const double testChecker = CorrEigVal[i] - CovEigVal[i];
             sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * 2 / samples / lines;
             sigmaTest = sqrt(sigmaSquareTest);
 
+            #pragma omp target parallel for
             for(int j = 1; j <= FPS; j++) {
                 TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
-
-                if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)
-                    count[j-1]++;
+                #pragma omp target critical
+                {
+                    if(TaoTest < testChecker)
+                        count[j-1]++;
+                }
             }
         }
     }
