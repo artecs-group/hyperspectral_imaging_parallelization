@@ -161,37 +161,45 @@ void SYCL_VCA::run(float SNR, const double* image) {
     _queue.memcpy(dImage, image, sizeof(double)*lines*samples*bands);
 	_queue.memcpy(dSNR, &SNR, sizeof(float));
     _queue.wait();
+	
+	const int max_wgs = _queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
+	int blocks  = N / max_wgs + (N % max_wgs == 0 ? 0 : 1);
+	for (size_t i = 0; i < bands; i++) {
+		_queue.parallel_for<class vca_7>(sycl::nd_range<1>{blocks*max_wgs, max_wgs}, sycl::reduction(&mean[i], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& temp) {
+			auto id = it.get_global_id(0);
+			if(id < N)
+				temp.combine(dImage[i*N + id]);
+		});
+	}
+	_queue.wait();
 
-	_queue.submit([&](cl::sycl::handler &h) {
-		h.parallel_for<class vca_10>(cl::sycl::range(bands), [=](auto i) {
-			for(int j = 0; j < N; j++)
-				mean[i] += dImage[i*N + j];
-			
+	blocks = bands / max_wgs + (bands % max_wgs == 0 ? 0 : 1);
+	_queue.parallel_for<class vca_8>(sycl::nd_range<1>{blocks*max_wgs, max_wgs}, [=](sycl::nd_item<1> it) {
+		auto i = it.get_global_id(0);
+		if(i < bands) {
 			mean[i] /= N;
-
 			for(int j = 0; j < N; j++)
 				meanImage[i*N + j] = dImage[i*N + j] - mean[i];
-		});
+		}
 	}).wait();
 
 	oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
 	_queue.wait();
 
-	_queue.submit([&](cl::sycl::handler &h) {
-		h.parallel_for<class vca_20>(cl::sycl::range(bands*bands), [=](auto i) {
+	blocks = bands*bands / max_wgs + (bands*bands % max_wgs == 0 ? 0 : 1);
+	_queue.parallel_for<class vca_20>(sycl::nd_range<1>{blocks*max_wgs, max_wgs}, [=](sycl::nd_item<1> it) {
+		auto i = it.get_global_id(0);
+		if(i < bands*bands)
 			svdMat[i] /= N;
-		});
 	}).wait();
 
 	oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::somevec, bands, bands, svdMat, bands, D, U, bands, VT, bands, gesvd_scratchpad, scrach_size);
 	_queue.wait();
 
-	_queue.submit([&](cl::sycl::handler &h) {
-		h.parallel_for<class vca_30>(cl::sycl::range<2>(bands, targetEndmembers), [=](auto index) {
-			int i = index[0];
-			int j = index[1];
-			Ud[i*targetEndmembers + j] = VT[i*bands + j];
-		});
+	_queue.parallel_for<class vca_30>(cl::sycl::range<2>(bands, targetEndmembers), [=](auto index) {
+		int i = index[0];
+		int j = index[1];
+		Ud[i*targetEndmembers + j] = VT[i*bands + j];
 	}).wait();
 
 	oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, targetEndmembers, N, bands, alpha, Ud, targetEndmembers, meanImage, N, beta, x_p, targetEndmembers);
