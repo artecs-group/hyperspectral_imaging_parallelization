@@ -17,13 +17,11 @@ else
     CFLAGS += -DCPU -xhost
 endif
 
-CFLAGS += -DOPENMP
+CFLAGS += -DOPENMP -O3
 
 # Debug Flags
 ifeq ($(DEBUG),yes)
- CFLAGS += -g -O0
-else
- CFLAGS += -O3
+ CFLAGS += -g
 endif
 
 main_openmp: ./VCA/openmp/vca.o ./VD/openmp/vd.o ./ISRA/openmp/isra.o main.o

@@ -2,14 +2,12 @@ DEBUG = no
 
 # Default compiler and flags
 CC = icpx
-CFLAGS = -I"${MKLROOT}/include" -qmkl -DMKL_ILP64 -DSEQUENTIAL
+CFLAGS = -I"${MKLROOT}/include" -qmkl -DMKL_ILP64 -DSEQUENTIAL -O3
 CLINK =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl
 
 # Debug Flags
 ifeq ($(DEBUG),yes)
- CFLAGS += -g -O0
-else
- CFLAGS += -O3
+ CFLAGS += -g
 endif
 
 main_sequential: ./VCA/sequential/vca.o ./VD/sequential/vd.o ./ISRA/sequential/isra.o main.o

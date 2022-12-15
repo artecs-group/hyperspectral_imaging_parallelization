@@ -16,13 +16,11 @@ else
     CFLAGS += -DCPU
 endif
 
-CFLAGS += -DSYCL
+CFLAGS += -DSYCL -O3
 
 # Debug Flags
 ifeq ($(DEBUG),yes)
- CFLAGS += -g -O0
-else
- CFLAGS += -O3
+ CFLAGS += -g
 endif
 
 main_sycl: ./VCA/sycl/vca.o ./VD/sycl/vd.o ./utils/sycl_selector.o ./ISRA/sycl/isra.o main.o
