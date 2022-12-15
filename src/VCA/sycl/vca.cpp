@@ -162,35 +162,21 @@ void SYCL_VCA::run(float SNR, const double* image) {
     _queue.memcpy(dImage, image, sizeof(double)*lines*samples*bands);
 	_queue.memcpy(dSNR, &SNR, sizeof(float));
     _queue.wait();
-	
-	const size_t max_wgs = _queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
-	size_t wgs = (N < max_wgs) ? N : max_wgs;
-	size_t blocks  = N / wgs + (N % wgs == 0 ? 0 : 1);
-	for (size_t i = 0; i < bands; i++) {
-		_queue.parallel_for<class vca_7>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&mean[i], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
-			auto id = it.get_global_id(0);
-			if(id < N)
-				red.combine(dImage[i*N + id]);
-		});
-	}
-	_queue.wait();
 
-	wgs = (bands < max_wgs) ? bands : max_wgs;
-	blocks = bands / wgs + (bands % wgs == 0 ? 0 : 1);
-	_queue.parallel_for<class vca_8>(sycl::nd_range<1>{blocks*wgs, wgs}, [=](sycl::nd_item<1> it) {
-		auto i = it.get_global_id(0);
-		if(i < bands) {
-			mean[i] /= N;
-			for(int j = 0; j < N; j++)
-				meanImage[i*N + j] = dImage[i*N + j] - mean[i];
-		}
-	}).wait();
+    _queue.parallel_for<class vca_10>(sycl::range(bands), [=](auto i) {
+		for(int j = 0; j < N; j++)
+			mean[i] += dImage[i*N + j];
+		mean[i] /= N;
+		for(int j = 0; j < N; j++)
+			meanImage[i*N + j] = dImage[i*N + j] - mean[i];
+    }).wait();
 
 	oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
 	_queue.wait();
 
-	wgs = (bands*bands < max_wgs) ? bands*bands : max_wgs;
-	blocks = bands*bands / wgs + (bands*bands % wgs == 0 ? 0 : 1);
+	const size_t max_wgs = _queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
+	size_t wgs = (bands*bands < max_wgs) ? bands*bands : max_wgs;
+	size_t blocks = bands*bands / wgs + (bands*bands % wgs == 0 ? 0 : 1);
 	_queue.parallel_for<class vca_20>(sycl::nd_range<1>{blocks*wgs, wgs}, [=](sycl::nd_item<1> it) {
 		auto i = it.get_global_id(0);
 		if(i < bands*bands)
