@@ -251,12 +251,10 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 		double tolerance = EPSILON * targetEndmembers * maxi;
         int rank = 0;
 
-		#pragma omp parallel for reduction(+: rank)
+		#pragma omp parallel for
         for (int i = 0; i < targetEndmembers; i++) {
-            if (pinvS[i] > tolerance) {
-                rank++;
+            if (pinvS[i] > tolerance)
                 pinvS[i] = 1.0 / pinvS[i];
-            }
         }
 
 		#pragma omp teams for simd collapse(2)
@@ -568,14 +566,11 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 			#pragma omp target update from(maxi)
 
 			double tolerance = EPSILON * targetEndmembers * maxi;
-			int rank = 0;
 
-			#pragma omp target teams distribute parallel for reduction(+: rank)
+			#pragma omp target teams distribute parallel for
 			for (int i = 0; i < targetEndmembers; i++) {
-				if (pinvS[i] > tolerance) {
-					rank++;
+				if (pinvS[i] > tolerance)
 					pinvS[i] = 1.0 / pinvS[i];
-				}
 			}
 
 			#pragma omp target teams distribute parallel for collapse(2)
