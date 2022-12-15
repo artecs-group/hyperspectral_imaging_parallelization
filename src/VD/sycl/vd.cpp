@@ -98,8 +98,12 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
         for(int j = 0; j < N; j++)
             mean[i] += meanImage[(i*N) + j];
         mean[i] /= N;
-        for(int j = 0; j < N; j++)
-            meanImage[(i*N) + j] -= mean[i];
+    }).wait();
+
+    _queue.parallel_for<class vca_15>(sycl::range(bands, N), [=](auto index) {
+		auto i = index[0];
+		auto j = index[1];
+		meanImage[(i*N) + j] -= mean[i];
     }).wait();
 
     oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
