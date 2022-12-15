@@ -95,12 +95,13 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     _queue.wait();
 
     _queue.parallel_for<class vd_10>(sycl::range(bands), [=](auto i) {
+        #pragma code_align 32
         for(int j = 0; j < N; j++)
             mean[i] += meanImage[(i*N) + j];
         mean[i] /= N;
     }).wait();
 
-    _queue.parallel_for<class vca_15>(sycl::range(bands, N), [=](auto index) {
+    _queue.parallel_for<class vd_15>(sycl::range(bands, N), [=](auto index) {
 		auto i = index[0];
 		auto j = index[1];
 		meanImage[(i*N) + j] -= mean[i];
