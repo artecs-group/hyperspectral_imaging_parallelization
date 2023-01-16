@@ -51,7 +51,12 @@ void SequentialISRA::run(int maxIter, const double* image, const double* endmemb
     end = std::chrono::high_resolution_clock::now();
     tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
-    double test = std::accumulate(abundanceMatrix, abundanceMatrix + (targetEndmembers * N), 0);
-    std::cout << "Test = " << test << std::endl;
+#if defined(DEBUG)
+    int ntest = (targetEndmembers * N) < 10 ? targetEndmembers * N : 10;
+    std::cout << "Abundance matrix first " << ntest << " elements: " << std::endl << "      -> ";
+    for (size_t i = 0; i < ntest; i++)
+        std::cout << abundanceMatrix[i] << ", ";
+    std::cout << std::endl;
+#endif
     std::cout << std::endl << "ISRA took = " << tIsra << " (s)" << std::endl;
 }

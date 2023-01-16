@@ -1,5 +1,6 @@
 DEVICE = cpu # cpu, igpu, nvidia
 DEBUG = no # yes, no
+PDEBUG = no # yes, no; program output debug info
 
 # Default compiler and flags
 CC = icpx
@@ -22,6 +23,10 @@ CFLAGS += -DOPENMP -O3
 # Debug Flags
 ifeq ($(DEBUG),yes)
  CFLAGS += -g
+endif
+
+ifeq ($(PDEBUG),yes)
+ CFLAGS += -DDEBUG
 endif
 
 main_openmp: ./VCA/openmp/vca.o ./VD/openmp/vd.o ./ISRA/openmp/isra.o main.o

@@ -159,7 +159,7 @@ int loadImage(const std::string& filename, double* image, int lines, int samples
 
     switch(op) {
         case 0:
-            for(int i = 0; i < lines*samples*bands; i++)
+            for (size_t i = 0; i < bands*lines*samples; i++)
                 image[i] = type_float[i];
             break;
 

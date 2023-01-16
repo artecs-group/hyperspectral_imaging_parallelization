@@ -84,7 +84,9 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 	VSLStreamStatePtr generator;
 	vslNewStream(&generator, VSL_BRNG_MT19937, seed);
 
-    // get mean image
+    /***********
+	 * SNR estimation
+	 ***********/
 	#pragma omp parallel for
 	for(int i = 0; i < bands; i++) {
 		double sum{0.0f};
@@ -135,8 +137,19 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 	SNR = (SNR == 0) ? 
                     10 * std::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) :
                     SNR;
+	/**********************/
 
+#if defined(DEBUG)
+		std::cout << "SNR    = " << SNR << std::endl 
+				  << "SNR_th = " << SNR_th << std::endl;
+#endif
+/***************
+ * Choosing Projective Projection or projection to p-1 subspace
+ ***************/
 	if(SNR < SNR_th) {
+#if defined(DEBUG)
+		std::cout << "Select the projective proj."<< std::endl;
+#endif
 		#pragma omp teams distribute parallel for collapse(2)
 		for(int i = 0; i < bands; i++)
 			for(int j = 0; j < targetEndmembers; j++)
@@ -175,7 +188,9 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
                 y[i*N + j] = (i < targetEndmembers-1) ? x_p[i*N + j] : sum1Sqrt;
 	}
     else {
-
+#if defined(DEBUG)
+		std::cout << "Select proj. to p-1"<< std::endl;
+#endif
 		cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
 
 		#pragma omp teams distribute parallel for simd
@@ -197,6 +212,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 			#pragma omp simd reduction(+: u[i])
 			for(int j = 0; j < N; j++)
 				u[i] += x_p[i*N + j];
+			u[i] /= N;
 		}
 
 		#pragma omp parallel for simd collapse(2)
@@ -216,7 +232,11 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 			for(int j = 0; j < N; j++)
 				y[i*N + j] /= sumxu[j];
 	}
+	/******************/
 
+	/*******************
+	 * VCA algorithm
+	 *******************/
 	A[(targetEndmembers-1) * targetEndmembers] = 1;
 
 	for(int i = 0; i < targetEndmembers; i++) {
@@ -304,6 +324,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 	    for(int j = 0; j < bands; j++)
 	    	endmembers[j*targetEndmembers + i] = Rp[j + bands * index[i]];
 	}
+	/******************/
 }
 
 
@@ -365,6 +386,9 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 		D[0:bands], U[0:bands*bands], VT[0:bands*bands]) \
 	device(default_dev)
 	{
+    /***********
+	 * SNR estimation
+	 ***********/
 		// get mean image
 		#pragma omp target distribute teams parallel for
 		for(int i = 0; i < bands; i++) {
@@ -430,9 +454,20 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 		SNR = (SNR == 0) ? 
 						10 * std::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) :
 						SNR;
+	/**********************/
 
+#if defined(DEBUG)
+		std::cout << "SNR    = " << SNR << std::endl 
+				  << "SNR_th = " << SNR_th << std::endl;
+#endif
+
+/***************
+ * Choosing Projective Projection or projection to p-1 subspace
+ ***************/
 		if(SNR < SNR_th) {
-
+#if defined(DEBUG)
+		std::cout << "Select the projective proj."<< std::endl;
+#endif
 			#pragma omp target teams distribute parallel for collapse(2)
 			for(int i = 0; i < bands; i++)
 				for(int j = 0; j < targetEndmembers; j++)
@@ -477,7 +512,9 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 					y[i*N + j] = (i < targetEndmembers-1) ? x_p[i*N + j] : sum1Sqrt;
 		}
 		else {
-			
+#if defined(DEBUG)
+		std::cout << "Select proj. to p-1"<< std::endl;
+#endif
 			#pragma omp target data use_device_ptr(image, svdMat)
 			{
 				cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
@@ -512,6 +549,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 				#pragma omp simd reduction(+: u[i])
 				for(int j = 0; j < N; j++)
 					u[i] += x_p[i*N + j];
+				u[i] /= N;
 			}
 
 			#pragma omp target teams distribute parallel for simd collapse(2)
@@ -531,7 +569,11 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 				for(int j = 0; j < N; j++)
 					y[i*N + j] /= sumxu[j];
 		}
+	/******************/
 
+	/*******************
+	 * VCA algorithm
+	 *******************/
 		#pragma omp target map(A[:targetEndmembers*targetEndmembers])
 		{
 			A[(targetEndmembers-1) * targetEndmembers] = 1;
@@ -633,6 +675,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 				endmembers[j*targetEndmembers + i] = Rp[j + bands * index[i]];
 		}
 	}
+	/******************/
 	#pragma omp target exit data map(from: endmembers[0: targetEndmembers * bands]) device(default_dev)
 #if defined(NVIDIA_GPU)
 	curandDestroyGenerator(generator);
@@ -655,7 +698,9 @@ void OpenMP_VCA::run(float SNR, const double* image) {
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
 
-    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
+#if defined(DEBUG)
+	int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
+#endif
     std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
 }

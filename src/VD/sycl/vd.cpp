@@ -142,6 +142,8 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
+#if defined(DEBUG)
     std::cout << "Test = " << endmembers << std::endl;
+#endif
     std::cout << std::endl << "VD took = " << tVd << " (s)" << std::endl;
 }

@@ -1,4 +1,5 @@
-DEBUG = no
+DEBUG = no # yes, no
+PDEBUG = no # yes, no; program output debug info
 
 # Default compiler and flags
 CC = icpx
@@ -8,6 +9,10 @@ CLINK =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}
 # Debug Flags
 ifeq ($(DEBUG),yes)
  CFLAGS += -g
+endif
+
+ifeq ($(PDEBUG),yes)
+ CFLAGS += -DDEBUG
 endif
 
 main_sequential: ./VCA/sequential/vca.o ./VD/sequential/vd.o ./ISRA/sequential/isra.o main.o

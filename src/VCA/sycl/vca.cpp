@@ -159,6 +159,9 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
     start = std::chrono::high_resolution_clock::now();
 
+    /***********
+	 * SNR estimation
+	 ***********/
     _queue.memcpy(dImage, image, sizeof(double)*lines*samples*bands);
 	_queue.memcpy(dSNR, &SNR, sizeof(float));
     _queue.wait();
@@ -234,8 +237,20 @@ void SYCL_VCA::run(float SNR, const double* image) {
 					10 * cl::sycl::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) :
 					dSNR[0];
     }).wait();
+	/**********************/
 
+#if defined(DEBUG)
+		std::cout << "SNR    = " << dSNR[0] << std::endl 
+				  << "SNR_th = " << SNR_th << std::endl;
+#endif
+
+/***************
+ * Choosing Projective Projection or projection to p-1 subspace
+ ***************/
 	if(dSNR[0] < SNR_th) {
+#if defined(DEBUG)
+		std::cout << "Select the projective proj."<< std::endl;
+#endif
 		_queue.parallel_for<class vca_50>(cl::sycl::range<2>(bands, targetEndmembers), [=](auto index) {
 			int i = index[0];
 			int j = index[1];
@@ -292,6 +307,9 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	}
 
 	else {
+#if defined(DEBUG)
+		std::cout << "Select proj. to p-1"<< std::endl;
+#endif
 		oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, dImage, N, dImage, N, beta, svdMat, bands);
 		_queue.wait();
 
@@ -321,6 +339,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		_queue.parallel_for<class vca_110>(cl::sycl::range(targetEndmembers), [=](auto i) {
 			for(int j = 0; j < N; j++)
 				u[i] += x_p[i*N + j];
+			u[i] /= N;
 		}).wait();
 
 		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
@@ -348,7 +367,11 @@ void SYCL_VCA::run(float SNR, const double* image) {
 			}
 		}).wait();
 	}
+	/******************/
 
+	/*******************
+	 * VCA algorithm
+	 *******************/
 	for(int i = 0; i < targetEndmembers; i++) {
 		oneapi::mkl::rng::generate(distr, engine, targetEndmembers, w);
 		_queue.wait();
@@ -444,10 +467,13 @@ void SYCL_VCA::run(float SNR, const double* image) {
 			endmembers[j*targetEndmembers + i] = Rp[bands * maxIdx->idx + j];
 		}).wait();
 	}
+	/******************/
 
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
+#if defined(DEBUG)
+	int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
+#endif
     std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
 }

@@ -80,7 +80,9 @@ void SequentialVCA::run(float SNR, const double* image) {
 	vslNewStream(&rdstream, VSL_BRNG_MT19937, seed);
 
     start = std::chrono::high_resolution_clock::now();
-    // get mean image
+    /***********
+	 * SNR estimation
+	 ***********/
 	for(int i = 0; i < bands; i++) {
 		for(int j = 0; j < N; j++)
 			mean[i] += image[i*N + j];
@@ -107,19 +109,29 @@ void SequentialVCA::run(float SNR, const double* image) {
 	for(int i = 0; i < N*bands; i++) {
 		sum1 += image[i] * image[i];
 		if(i < N * targetEndmembers) 
-            sum2 += x_p[i] * x_p[i];
+			sum2 += x_p[i] * x_p[i];
 		if(i < bands) 
-            mult += mean[i] * mean[i];
+			mult += mean[i] * mean[i];
 	}
 
 	powery = sum1 / N;
 	powerx = sum2 / N + mult;
 
-	SNR = (SNR == 0) ? 
-                    10 * std::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) :
-                    SNR;
+	SNR = (SNR == 0) ? 10 * std::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) : SNR;
+	/**********************/
 
+#if defined(DEBUG)
+		std::cout << "SNR    = " << SNR << std::endl 
+				  << "SNR_th = " << SNR_th << std::endl;
+#endif
+
+/***************
+ * Choosing Projective Projection or projection to p-1 subspace
+ ***************/
 	if(SNR < SNR_th) {
+#if defined(DEBUG)
+		std::cout << "Select the projective proj."<< std::endl;
+#endif
 		for(int i = 0; i < bands; i++)
 			for(int j = 0; j < targetEndmembers; j++)
                 Ud[i*targetEndmembers + j] = (j < targetEndmembers-1) ? VT[i*bands + j] : 0;
@@ -149,7 +161,9 @@ void SequentialVCA::run(float SNR, const double* image) {
                 y[i*N + j] = (i < targetEndmembers-1) ? x_p[i*N + j] : sum1Sqrt;
 	}
     else {
-
+#if defined(DEBUG)
+		std::cout << "Select proj. to p-1"<< std::endl;
+#endif
 		cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
 
 		for(int i = 0; i < bands*bands; i++)
@@ -168,6 +182,8 @@ void SequentialVCA::run(float SNR, const double* image) {
 			for(int j = 0; j < N; j++)
 				u[i] += x_p[i*N + j];
 
+			u[i] /= N;
+
 			for(int j = 0; j < N; j++)
 				y[i*N + j] = x_p[i*N + j] * u[i];
 		}
@@ -181,7 +197,11 @@ void SequentialVCA::run(float SNR, const double* image) {
 			for(int j = 0; j < N; j++)
 				y[i*N + j] /= sumxu[j];
 	}
+	/******************/
 
+	/*******************
+	 * VCA algorithm
+	 *******************/
 	A[(targetEndmembers-1) * targetEndmembers] = 1;
 
 	for(int i = 0; i < targetEndmembers; i++) {
@@ -240,12 +260,14 @@ void SequentialVCA::run(float SNR, const double* image) {
 	    for(int j = 0; j < bands; j++)
 	    	endmembers[j*targetEndmembers + i] = Rp[j + bands * index[i]];
 	}
+	/******************/
 
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
-
-    int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
+#if defined(DEBUG)
+	int test = std::accumulate(endmembers, endmembers + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
+#endif
     std::cout << std::endl << "VCA took = " << tVca << " (s)" << std::endl;
 	vslDeleteStream(&rdstream);
 }

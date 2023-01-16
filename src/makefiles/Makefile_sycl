@@ -1,5 +1,6 @@
 DEVICE = cpu # cpu, igpu, nvidia
 DEBUG = no # yes, no
+PDEBUG = no # yes, no; program output debug info
 
 # Default compiler and flags
 CC = dpcpp
@@ -21,6 +22,10 @@ CFLAGS += -DSYCL -O3
 # Debug Flags
 ifeq ($(DEBUG),yes)
  CFLAGS += -g
+endif
+
+ifeq ($(PDEBUG),yes)
+ CFLAGS += -DDEBUG
 endif
 
 main_sycl: ./VCA/sycl/vca.o ./VD/sycl/vd.o ./utils/sycl_selector.o ./ISRA/sycl/isra.o main.o
