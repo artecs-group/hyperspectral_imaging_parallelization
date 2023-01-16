@@ -119,7 +119,7 @@ void OpenMP_ISRA::run(int maxIter, const double* image, const double* endmembers
     tIsra += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
 #if defined(DEBUG)
-    int ntest = (targetEndmembers * N) < 10 ? targetEndmembers * N : 10;
+    int ntest = (targetEndmembers * lines * samples) < 10 ? targetEndmembers * lines * samples : 10;
     std::cout << "Abundance matrix first " << ntest << " elements: " << std::endl << "      -> ";
     for (size_t i = 0; i < ntest; i++)
         std::cout << abundanceMatrix[i] << ", ";
