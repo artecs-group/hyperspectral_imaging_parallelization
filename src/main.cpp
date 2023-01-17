@@ -273,9 +273,9 @@ int writeHeader(const std::string& filename, int lines, int samples, int bands, 
     if(lines != 0)    outFile << "lines   = " << lines << std::endl;
     if(bands != 0)    outFile << "bands   = " << bands << std::endl;
     if(dataType != 0) outFile << "data type = " << dataType << std::endl;
-    if(interleave.length() == 0) outFile << "interleave = " << interleave << std::endl;
+    if(interleave.length() != 0) outFile << "interleave = " << interleave << std::endl;
     if(byteOrder != 0) outFile << "byte order = " << byteOrder << std::endl;
-    if(waveUnit.length() == 0) {
+    if(waveUnit.length() != 0) {
         outFile << "wavelength units = " << waveUnit << std::endl
                 << "wavelength = {" << std::endl;
         for(int i = 0; i < bands; i++) {
