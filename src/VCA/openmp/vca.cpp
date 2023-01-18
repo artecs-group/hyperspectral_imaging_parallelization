@@ -87,7 +87,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
     double scarch_pinv[targetEndmembers-1];
 	std::uint64_t seed{0};
 	VSLStreamStatePtr generator;
-	vslNewStream(&generator, VSL_BRNG_MT19937, seed);
+	vslNewStream(&generator, VSL_BRNG_MRG32K3A, seed);
 
     /***********
 	 * SNR estimation
@@ -251,7 +251,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 			const int nthreads = omp_get_num_threads();
 			const int tid = omp_get_thread_num();
 			vdRngGaussian(
-				VSL_RNG_METHOD_GAUSSIAN_BOXMULLER, 
+				VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2, 
 				generator, 
 				targetEndmembers/nthreads, 
 				w + tid * targetEndmembers / nthreads, 
@@ -347,7 +347,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
     curandSetPseudoRandomGeneratorSeed(generator, seed);
 #else
 	VSLStreamStatePtr generator;
-	vslNewStream(&generator, VSL_BRNG_MT19937, seed);
+	vslNewStream(&generator, VSL_BRNG_MRG32K3A, seed);
 #endif
 
     double* Ud = this->Ud;
@@ -590,7 +590,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 #if defined(NVIDIA_GPU)
 				w[i] = curand_normal_double(generator, 0.0, 1.0);
 #else
-				vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER, generator, 1, w + i, 0.0, 1.0);
+				vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2, generator, 1, w + i, 0.0, 1.0);
 #endif
 			}
 

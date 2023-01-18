@@ -129,8 +129,8 @@ void SYCL_VCA::run(float SNR, const double* image) {
     const double SNR_th{15 + 10 * std::log10(targetEndmembers)};
 
 	std::uint64_t seed{0};
-	oneapi::mkl::rng::mt19937 engine(_queue, seed);
-	oneapi::mkl::rng::gaussian<double, oneapi::mkl::rng::gaussian_method::box_muller> distr(0.0, 1.0);
+	oneapi::mkl::rng::mrg32k3a engine(_queue, seed);
+	oneapi::mkl::rng::gaussian<double, oneapi::mkl::rng::gaussian_method::box_muller2> distr(0.0, 1.0);
 
 
     double* Ud = this->Ud;

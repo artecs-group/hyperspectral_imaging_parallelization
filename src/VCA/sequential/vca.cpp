@@ -82,7 +82,7 @@ void SequentialVCA::run(float SNR, const double* image) {
     double scarch_pinv[targetEndmembers-1];
 	std::uint64_t seed{0};
 	VSLStreamStatePtr rdstream;
-	vslNewStream(&rdstream, VSL_BRNG_MT19937, seed);
+	vslNewStream(&rdstream, VSL_BRNG_MRG32K3A, seed);
 
     start = std::chrono::high_resolution_clock::now();
     /***********
@@ -210,7 +210,7 @@ void SequentialVCA::run(float SNR, const double* image) {
 	A[(targetEndmembers-1) * targetEndmembers] = 1;
 
 	for(int i = 0; i < targetEndmembers; i++) {
-		vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER, rdstream, targetEndmembers, w, 0.0, 1.0);
+		vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2, rdstream, targetEndmembers, w, 0.0, 1.0);
 
         std::copy(A, A + targetEndmembers*targetEndmembers, A2);
 
