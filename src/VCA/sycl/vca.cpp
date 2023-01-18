@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <CL/sycl.hpp>
 #include "oneapi/mkl.hpp"
-#include "oneapi/mkl/rng.hpp"
+//#include "oneapi/mkl/rng.hpp"
 
 #include "./vca.hpp"
 
@@ -83,34 +83,41 @@ SYCL_VCA::~SYCL_VCA(){
 	if(!isQueueInit())
 		return;
 
-    if(Ud != nullptr) sycl::free(Ud, _queue);
-	if(x_p != nullptr) sycl::free(x_p, _queue);
-	if(y != nullptr) sycl::free(y, _queue);
-	if(dImage != nullptr) sycl::free(dImage, _queue);
-	if(meanImage != nullptr) sycl::free(meanImage, _queue);
-	if(mean != nullptr) sycl::free(mean, _queue);
-	if(svdMat != nullptr) sycl::free(svdMat, _queue);
-	if(D != nullptr) sycl::free(D, _queue);
-	if(U != nullptr) sycl::free(U, _queue);
-	if(VT != nullptr) sycl::free(VT, _queue);
-	if(endmembers != nullptr) sycl::free(endmembers, _queue);
-	if(Rp != nullptr) sycl::free(Rp, _queue);
-	if(u != nullptr) sycl::free(u, _queue);
-	if(sumxu != nullptr) sycl::free(sumxu, _queue);
-	if(w != nullptr) sycl::free(w, _queue);
-	if(A != nullptr) sycl::free(A, _queue);
-	if(A2 != nullptr) sycl::free(A2, _queue);
-	if(aux != nullptr) sycl::free(aux, _queue);
-	if(f != nullptr) sycl::free(f, _queue);
-	if(gesvd_scratchpad != nullptr) sycl::free(gesvd_scratchpad, _queue);
-	if(pinv_scratchpad != nullptr) sycl::free(pinv_scratchpad, _queue);
-	if(pinvS != nullptr) sycl::free(pinvS, _queue);
-	if(pinvU != nullptr) sycl::free(pinvU, _queue);
-	if(pinvVT != nullptr) sycl::free(pinvVT, _queue);
-	if(Utranstmp != nullptr) sycl::free(Utranstmp, _queue);
-	if(dSNR != nullptr) sycl::free(dSNR, _queue);
-	if(redVars != nullptr) sycl::free(redVars, _queue);
-	if(maxIdx != nullptr) sycl::free(maxIdx, _queue);
+	if(endmembers != nullptr) {sycl::free(endmembers, _queue); endmembers = nullptr;}
+	if(Rp != nullptr) {sycl::free(Rp, _queue); Rp = nullptr;}
+	clearMemory();
+}
+
+void SYCL_VCA::clearMemory() {
+	if(!isQueueInit())
+		return;
+	
+    if(Ud != nullptr) {sycl::free(Ud, _queue); Ud = nullptr;}
+	if(x_p != nullptr) {sycl::free(x_p, _queue); x_p = nullptr;}
+	if(y != nullptr) {sycl::free(y, _queue); y = nullptr;}
+	if(dImage != nullptr) {sycl::free(dImage, _queue); dImage = nullptr;}
+	if(meanImage != nullptr) {sycl::free(meanImage, _queue); meanImage = nullptr;}
+	if(mean != nullptr) {sycl::free(mean, _queue); mean = nullptr;}
+	if(svdMat != nullptr) {sycl::free(svdMat, _queue); svdMat = nullptr;}
+	if(D != nullptr) {sycl::free(D, _queue); D = nullptr;}
+	if(U != nullptr) {sycl::free(U, _queue); U = nullptr;}
+	if(VT != nullptr) {sycl::free(VT, _queue); VT = nullptr;}
+	if(u != nullptr) {sycl::free(u, _queue); u = nullptr;}
+	if(sumxu != nullptr) {sycl::free(sumxu, _queue); sumxu = nullptr;}
+	if(w != nullptr) {sycl::free(w, _queue); w = nullptr;}
+	if(A != nullptr) {sycl::free(A, _queue); A = nullptr;}
+	if(A2 != nullptr) {sycl::free(A2, _queue); A2 = nullptr;}
+	if(aux != nullptr) {sycl::free(aux, _queue); aux = nullptr;}
+	if(f != nullptr) {sycl::free(f, _queue); f = nullptr;}
+	if(gesvd_scratchpad != nullptr) {sycl::free(gesvd_scratchpad, _queue); gesvd_scratchpad = nullptr;}
+	if(pinv_scratchpad != nullptr) {sycl::free(pinv_scratchpad, _queue); pinv_scratchpad = nullptr;}
+	if(pinvS != nullptr) {sycl::free(pinvS, _queue); pinvS = nullptr;}
+	if(pinvU != nullptr) {sycl::free(pinvU, _queue); pinvU = nullptr;}
+	if(pinvVT != nullptr) {sycl::free(pinvVT, _queue); pinvVT = nullptr;}
+	if(Utranstmp != nullptr) {sycl::free(Utranstmp, _queue); Utranstmp = nullptr;}
+	if(dSNR != nullptr) {sycl::free(dSNR, _queue); dSNR = nullptr;}
+	if(redVars != nullptr) {sycl::free(redVars, _queue); redVars = nullptr;}
+	if(maxIdx != nullptr) {sycl::free(maxIdx, _queue); maxIdx = nullptr;}
 }
 
 
@@ -205,7 +212,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 	wgs = (N*bands < max_wgs) ? N*bands : max_wgs;
 	blocks = (N*bands + wgs - 1) / wgs;
-	_queue.parallel_for<class vca_33>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[0], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
+	_queue.parallel_for(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[0], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
 		auto id = it.get_global_id(0);
 		if(id < N*bands)
 			red.combine(dImage[id]*dImage[id]);
@@ -213,7 +220,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 	wgs = (N*targetEndmembers < max_wgs) ? N*targetEndmembers : max_wgs;
 	blocks = (N*targetEndmembers + wgs - 1) / wgs;
-	_queue.parallel_for<class vca_35>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[1], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
+	_queue.parallel_for(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[1], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
 		auto id = it.get_global_id(0);
 		if(id < N*targetEndmembers)
 			red.combine(x_p[id]*x_p[id]);
@@ -221,7 +228,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 	wgs = (bands < max_wgs) ? bands : max_wgs;
 	blocks = (bands + wgs - 1) / wgs;
-	_queue.parallel_for<class vca_37>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[2], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
+	_queue.parallel_for(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[2], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
 		auto id = it.get_global_id(0);
 		if(id < bands)
 			red.combine(mean[id]*mean[id]);
@@ -277,7 +284,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
 		blocks = (targetEndmembers + wgs - 1) / wgs;
-		_queue.parallel_for<class vca_58>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[0], sycl::maximum<>()), [=](sycl::nd_item<1> it, auto& red) {
+		_queue.parallel_for(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[0], sycl::maximum<>()), [=](sycl::nd_item<1> it, auto& red) {
 			auto id = it.get_global_id(0);
 			if(id < targetEndmembers)
 				red.combine(u[id]);
@@ -385,7 +392,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
 		blocks = (targetEndmembers + wgs - 1) / wgs;
-		_queue.parallel_for<class vca_140>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[1], sycl::maximum<>()), [=](sycl::nd_item<1> it, auto& red) {
+		_queue.parallel_for(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[1], sycl::maximum<>()), [=](sycl::nd_item<1> it, auto& red) {
 			auto id = it.get_global_id(0);
 			if(id < targetEndmembers)
 				red.combine(pinvS[id]);
@@ -422,7 +429,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
 		blocks = (targetEndmembers + wgs - 1) / wgs;
-		_queue.parallel_for<class vca_165>(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[0], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
+		_queue.parallel_for(sycl::nd_range<1>{blocks*wgs, wgs}, sycl::reduction(&redVars[0], sycl::plus<>()), [=](sycl::nd_item<1> it, auto& red) {
 			auto id = it.get_global_id(0);
 			if(id < targetEndmembers)
 				red.combine(f[id]*f[id]);

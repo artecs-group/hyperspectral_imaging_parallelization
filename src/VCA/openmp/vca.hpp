@@ -9,6 +9,7 @@ class OpenMP_VCA: I_VCA {
         ~OpenMP_VCA();
         void run(float SNR, const double* image);
         double* getEndmembers() { return endmembers; };
+        void clearMemory();
     private:
         void _runOnCPU(float SNR, const double* image);
         void _runOnGPU(float SNR, const double* image);

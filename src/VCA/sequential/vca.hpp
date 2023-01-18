@@ -9,6 +9,7 @@ class SequentialVCA: I_VCA {
         ~SequentialVCA();
         void run(float SNR, const double* image);
         double* getEndmembers() { return endmembers; };
+        void clearMemory();
 };
 
 #endif

@@ -9,6 +9,7 @@ class OpenMP_ISRA: I_ISRA {
         ~OpenMP_ISRA();
         void run(int maxIter, const double* image, const double* endmembers);
         double* getAbundanceMatrix() { return abundanceMatrix; };
+        void clearMemory();
     private:
         void runOnCPU(int maxIter, const double* image, const double* endmembers);
         void runOnGPU(int maxIter, const double* image, const double* endmembers);

@@ -10,6 +10,7 @@ class SYCL_VD: I_VD {
         ~SYCL_VD();
         void run(const int approxVal, const double* h_image);
         unsigned int getNumberEndmembers() { return endmembers; };
+        void clearMemory();
     private:
         sycl::queue _queue;
         int64_t _scrach_size;

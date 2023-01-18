@@ -358,6 +358,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "---------------- VD -----------------" << std::endl;
     vd.run(approxVal, image);
+    vd.clearMemory();
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
 #if defined(SYCL)
@@ -370,6 +371,7 @@ SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers(
 
     std::cout << "---------------- VCA ----------------" << std::endl;
     vca.run(SNR, image);
+    vca.clearMemory();
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
 #if defined(SYCL)
@@ -382,6 +384,7 @@ SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembe
 
     std::cout << "---------------- ISRA ----------------" << std::endl;
     isra.run(maxIter, image, vca.getEndmembers());
+    isra.clearMemory();
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
     end = std::chrono::high_resolution_clock::now();

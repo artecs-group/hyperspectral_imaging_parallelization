@@ -30,13 +30,21 @@ SYCL_ISRA::SYCL_ISRA(int _lines, int _samples, int _bands, unsigned int _targetE
 SYCL_ISRA::~SYCL_ISRA() {
 	if(!isQueueInit())
 		return;
+        
+    if(abundanceMatrix != nullptr) {sycl::free(abundanceMatrix, _queue); abundanceMatrix = nullptr; }
+    clearMemory();
+}
 
-    if(abundanceMatrix != nullptr) sycl::free(abundanceMatrix, _queue);
-    if(numerator != nullptr) sycl::free(numerator, _queue);
-    if(denominator != nullptr) sycl::free(denominator, _queue);
-    if(aux != nullptr) sycl::free(aux, _queue);
-    if(image != nullptr) sycl::free(image, _queue);
-    if(endmembers != nullptr) sycl::free(endmembers, _queue);
+
+void SYCL_ISRA::clearMemory() {
+	if(!isQueueInit())
+		return;
+
+    if(numerator != nullptr) {sycl::free(numerator, _queue); numerator = nullptr; }
+    if(denominator != nullptr) {sycl::free(denominator, _queue); denominator = nullptr; }
+    if(aux != nullptr) {sycl::free(aux, _queue); aux = nullptr; }
+    if(image != nullptr) {sycl::free(image, _queue); image = nullptr; }
+    if(endmembers != nullptr) {sycl::free(endmembers, _queue); endmembers = nullptr; }
 }
 
 

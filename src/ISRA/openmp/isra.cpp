@@ -28,10 +28,15 @@ OpenMP_ISRA::OpenMP_ISRA(int _lines, int _samples, int _bands, unsigned int _tar
 
 
 OpenMP_ISRA::~OpenMP_ISRA() {
-    if(abundanceMatrix != nullptr) delete[] abundanceMatrix;
-    if(numerator != nullptr) delete[] numerator;
-    if(denominator != nullptr) delete[] denominator;
-    if(aux != nullptr) delete[] aux;
+    if(abundanceMatrix != nullptr) {delete[] abundanceMatrix; abundanceMatrix = nullptr; }
+    clearMemory();
+}
+
+
+void OpenMP_ISRA::clearMemory() {
+    if(numerator != nullptr) {delete[] numerator; numerator = nullptr; }
+    if(denominator != nullptr) {delete[] denominator; denominator = nullptr; }
+    if(aux != nullptr) {delete[] aux; aux = nullptr; }
 }
 
 

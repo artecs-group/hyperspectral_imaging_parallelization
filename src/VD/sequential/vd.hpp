@@ -9,6 +9,7 @@ class SequentialVD: I_VD {
         ~SequentialVD();
         void run(const int approxVal, const double* image);
         unsigned int getNumberEndmembers() { return endmembers; };
+        void clearMemory();
 };
 
 #endif

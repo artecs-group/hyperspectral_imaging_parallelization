@@ -9,6 +9,7 @@ class OpenMP_VD: I_VD {
         ~OpenMP_VD();
         void run(const int approxVal, const double* image);
         unsigned int getNumberEndmembers() { return endmembers; };
+        void clearMemory();
     private:
         void runOnCPU(const int approxVal, const double* image);
         void runOnGPU(const int approxVal, const double* image);

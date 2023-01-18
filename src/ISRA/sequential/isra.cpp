@@ -21,10 +21,14 @@ SequentialISRA::SequentialISRA(int _lines, int _samples, int _bands, unsigned in
 
 
 SequentialISRA::~SequentialISRA() {
-    if(abundanceMatrix != nullptr) delete[] abundanceMatrix;
-    if(numerator != nullptr) delete[] numerator;
-    if(denominator != nullptr) delete[] denominator;
-    if(aux != nullptr) delete[] aux;
+    if(abundanceMatrix != nullptr) {delete[] abundanceMatrix; abundanceMatrix = nullptr; }
+    clearMemory();
+}
+
+void SequentialISRA::clearMemory() {
+    if(numerator != nullptr) {delete[] numerator; numerator = nullptr; }
+    if(denominator != nullptr) {delete[] denominator; denominator = nullptr; }
+    if(aux != nullptr) {delete[] aux; aux = nullptr; }
 }
 
 

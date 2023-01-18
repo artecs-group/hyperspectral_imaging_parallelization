@@ -32,16 +32,21 @@ SequentialVD::SequentialVD(int _lines, int _samples, int _bands){
 
 
 SequentialVD::~SequentialVD() {
-    if(meanSpect != nullptr) delete[] meanSpect;
-    if(Cov != nullptr) delete[] Cov;
-    if(Corr != nullptr) delete[] Corr;
-    if(CovEigVal != nullptr) delete[] CovEigVal;
-    if(CorrEigVal != nullptr) delete[] CorrEigVal;
-    if(U != nullptr) delete[] U;
-    if(VT != nullptr) delete[] VT;
-    if(count != nullptr) delete[] count;
-    if(estimation != nullptr) delete[] estimation;
-    if(meanImage != nullptr) delete[] meanImage;
+    clearMemory();
+}
+
+
+void SequentialVD::clearMemory() {
+    if(meanSpect != nullptr) {delete[] meanSpect; meanSpect = nullptr; }
+    if(Cov != nullptr) {delete[] Cov; Cov = nullptr; }
+    if(Corr != nullptr) {delete[] Corr; Corr = nullptr; }
+    if(CovEigVal != nullptr) {delete[] CovEigVal; CovEigVal = nullptr; }
+    if(CorrEigVal != nullptr) {delete[] CorrEigVal; CorrEigVal = nullptr; }
+    if(U != nullptr) {delete[] U; U = nullptr; }
+    if(VT != nullptr) {delete[] VT; VT = nullptr; }
+    if(count != nullptr) {delete[] count; count = nullptr; }
+    if(estimation != nullptr) {delete[] estimation; estimation = nullptr; }
+    if(meanImage != nullptr) {delete[] meanImage; meanImage = nullptr; }
 }
 
 

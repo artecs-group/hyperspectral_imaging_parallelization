@@ -41,29 +41,34 @@ SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int 
 
 
 SequentialVCA::~SequentialVCA(){
-    if(Ud != nullptr) delete[] Ud;
-	if(x_p != nullptr) delete[] x_p;
-	if(y != nullptr) delete[] y;
-	if(meanImage != nullptr) delete[] meanImage;
-	if(mean != nullptr) delete[] mean;
-	if(svdMat != nullptr) delete[] svdMat;
-	if(D != nullptr) delete[] D;
-	if(U != nullptr) delete[] U;
-	if(VT != nullptr) delete[] VT;
-	if(endmembers != nullptr) delete[] endmembers;
-	if(Rp != nullptr) delete[] Rp;
-	if(u != nullptr) delete[] u;
-	if(sumxu != nullptr) delete[] sumxu;
-	if(w != nullptr) delete[] w;
-	if(A != nullptr) delete[] A;
-	if(A2 != nullptr) delete[] A2;
-	if(aux != nullptr) delete[] aux;
-	if(f != nullptr) delete[] f;
-    if(index != nullptr) delete[] index;
-    if(pinvS != nullptr) delete[] pinvS;
-    if(pinvU != nullptr) delete[] pinvU;
-    if(pinvVT != nullptr) delete[] pinvVT;
-    if(Utranstmp != nullptr) delete[] Utranstmp;
+    if(endmembers != nullptr) {delete[] endmembers; endmembers = nullptr; }
+	if(Rp != nullptr) {delete[] Rp; Rp = nullptr; }
+	clearMemory();
+}
+
+
+void SequentialVCA::clearMemory() {
+    if(Ud != nullptr) {delete[] Ud; Ud = nullptr; }
+	if(x_p != nullptr) {delete[] x_p; x_p = nullptr; }
+	if(y != nullptr) {delete[] y; y = nullptr; }
+	if(meanImage != nullptr) {delete[] meanImage; meanImage = nullptr; }
+	if(mean != nullptr) {delete[] mean; mean = nullptr; }
+	if(svdMat != nullptr) {delete[] svdMat; svdMat = nullptr; }
+	if(D != nullptr) {delete[] D; D = nullptr; }
+	if(U != nullptr) {delete[] U; U = nullptr; }
+	if(VT != nullptr) {delete[] VT; VT = nullptr; }
+	if(u != nullptr) {delete[] u; u = nullptr; }
+	if(sumxu != nullptr) {delete[] sumxu; sumxu = nullptr; }
+	if(w != nullptr) {delete[] w; w = nullptr; }
+	if(A != nullptr) {delete[] A; A = nullptr; }
+	if(A2 != nullptr) {delete[] A2; A2 = nullptr; }
+	if(aux != nullptr) {delete[] aux; aux = nullptr; }
+	if(f != nullptr) {delete[] f; f = nullptr; }
+    if(index != nullptr) {delete[] index; index = nullptr; }
+    if(pinvS != nullptr) {delete[] pinvS; pinvS = nullptr; }
+    if(pinvU != nullptr) {delete[] pinvU; pinvU = nullptr; }
+    if(pinvVT != nullptr) {delete[] pinvVT; pinvVT = nullptr; }
+    if(Utranstmp != nullptr) {delete[] Utranstmp; Utranstmp = nullptr; }
 }
 
 

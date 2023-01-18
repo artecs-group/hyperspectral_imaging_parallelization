@@ -23,6 +23,7 @@ class SYCL_VCA: I_VCA {
         ~SYCL_VCA();
         void run(float SNR, const double* image);
         double* getEndmembers() { return endmembers; };
+        void clearMemory();
     private:
         sycl::queue _queue;
         pair<double, int>* maxIdx{nullptr};

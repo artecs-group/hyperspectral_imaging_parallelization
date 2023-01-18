@@ -10,6 +10,7 @@ class SYCL_ISRA: I_ISRA {
         ~SYCL_ISRA();
         void run(int maxIter, const double* hImage, const double* hEndmembers);
         double* getAbundanceMatrix() { return abundanceMatrix; };
+        void clearMemory();
     private:
         sycl::queue _queue;
         double *image{nullptr}, 

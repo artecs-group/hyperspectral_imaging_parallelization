@@ -9,6 +9,7 @@ class SequentialISRA: I_ISRA {
         ~SequentialISRA();
         void run(int maxIter, const double* image, const double* endmembers);
         double* getAbundanceMatrix() { return abundanceMatrix; };
+        void clearMemory();
 };
 
 #endif

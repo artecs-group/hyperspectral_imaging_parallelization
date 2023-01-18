@@ -54,20 +54,25 @@ SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
 
 
 SYCL_VD::~SYCL_VD() {
+	clearMemory();
+}
+
+
+void SYCL_VD::clearMemory() {
 	if(!isQueueInit())
 		return;
 
-    if(Cov != nullptr) sycl::free(Cov, _queue);
-    if(Corr != nullptr) sycl::free(Corr, _queue);
-    if(CovEigVal != nullptr) sycl::free(CovEigVal, _queue);
-    if(CorrEigVal != nullptr) sycl::free(CorrEigVal, _queue);
-    if(U != nullptr) sycl::free(U, _queue);
-    if(VT != nullptr) sycl::free(VT, _queue);
-    if(estimation != nullptr) sycl::free(estimation, _queue);
-    if(count != nullptr) sycl::free(count, _queue);
-    if(meanImage != nullptr) sycl::free(meanImage, _queue);
-    if(mean != nullptr) sycl::free(mean, _queue);
-    if(gesvd_scratchpad != nullptr) sycl::free(gesvd_scratchpad, _queue);
+    if(Cov != nullptr) {sycl::free(Cov, _queue); Cov = nullptr; }
+    if(Corr != nullptr) {sycl::free(Corr, _queue); Corr = nullptr; }
+    if(CovEigVal != nullptr) {sycl::free(CovEigVal, _queue); CovEigVal = nullptr; }
+    if(CorrEigVal != nullptr) {sycl::free(CorrEigVal, _queue); CorrEigVal = nullptr; }
+    if(U != nullptr) {sycl::free(U, _queue); U = nullptr; }
+    if(VT != nullptr) {sycl::free(VT, _queue); VT = nullptr; }
+    if(estimation != nullptr) {sycl::free(estimation, _queue); estimation = nullptr; }
+    if(count != nullptr) {sycl::free(count, _queue); count = nullptr; }
+    if(meanImage != nullptr) {sycl::free(meanImage, _queue); meanImage = nullptr; }
+    if(mean != nullptr) {sycl::free(mean, _queue); mean = nullptr; }
+    if(gesvd_scratchpad != nullptr) {sycl::free(gesvd_scratchpad, _queue); gesvd_scratchpad = nullptr; }
 }
 
 
