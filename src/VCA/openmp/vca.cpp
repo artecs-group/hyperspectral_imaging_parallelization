@@ -268,7 +268,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 
         double maxi = std::numeric_limits<double>::min();
 		
-		#pragma omp prallel for reduction(max: maxi)
+		#pragma omp parallel for reduction(max: maxi)
 		for(int i = 0; i < targetEndmembers; i++)
 			if(maxi < pinvS[i]) 
 				maxi = pinvS[i];
@@ -282,7 +282,7 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
                 pinvS[i] = 1.0 / pinvS[i];
         }
 
-		#pragma omp teams for simd collapse(2)
+		#pragma omp teams distribute parallel for simd collapse(2)
         for (int i = 0; i < targetEndmembers; i++)
             for (int j = 0; j < targetEndmembers; j++) 
                 Utranstmp[i + j * targetEndmembers] = pinvS[i] * pinvU[j + i * targetEndmembers];
@@ -395,7 +395,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 	 * SNR estimation
 	 ***********/
 		// get mean image
-		#pragma omp target distribute teams parallel for
+		#pragma omp target teams distribute parallel for
 		for(int i = 0; i < bands; i++) {
 			double sum{0.0f};
 			#pragma omp simd reduction(+: sum)
@@ -405,7 +405,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 			mean[i] = sum / N;
 		}
 
-		#pragma omp target distribute teams parallel for simd
+		#pragma omp target teams distribute parallel for simd
 		for(int i = 0; i < bands; i++) {
 			for(int j = 0; j < N; j++)
 				meanImage[i*N + j] = image[i*N + j] - mean[i];
@@ -565,7 +565,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 
 			#pragma omp target teams distribute parallel for
 			for(int i = 0; i < N; i++)
-				#pragma omp reduction(+: sumxu[i])
+				#pragma omp parallel for reduction(+: sumxu[i])
 				for(int j = 0; j < targetEndmembers; j++)
 					sumxu[i] += y[j*N + i];
 

@@ -99,7 +99,7 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
     for (size_t i = 0; i < FPS; i++)
         count[i] = 0;
 
-    #pragma omp parallel for simd
+    #pragma omp parallel for
     for(int i = 0; i < bands; i++) {
         const double testChecker = CorrEigVal[i] - CovEigVal[i];
     	sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * 2 / samples / lines;
@@ -188,16 +188,16 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
         }
 
         //estimation
-        #pragma omp target teams distribute device(default_dev)
+        #pragma omp target device(default_dev)
         for(int i = 0; i < bands; i++) {
             const double testChecker = CorrEigVal[i] - CovEigVal[i];
             sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * 2 / samples / lines;
             sigmaTest = sqrt(sigmaSquareTest);
 
-            #pragma omp target parallel for
+            #pragma omp parallel for
             for(int j = 1; j <= FPS; j++) {
                 TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
-                #pragma omp target critical
+                #pragma omp critical
                 {
                     if(TaoTest < testChecker)
                         count[j-1]++;

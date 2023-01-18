@@ -3,13 +3,13 @@ DEBUG = no # yes, no
 PDEBUG = no # yes, no; program output debug info
 
 # Default compiler and flags
-CC = dpcpp
-CFLAGS = -I"${MKLROOT}/include" -qmkl -DMKL_ILP64
+CC = icpx
+CFLAGS = -I"${MKLROOT}/include" -qmkl -DMKL_ILP64 -fsycl-unnamed-lambda -fsycl
 CLINK = -fsycl-device-code-split=per_kernel ${MKLROOT}/lib/intel64/libmkl_sycl.a -Wl,-export-dynamic -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_tbb_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -L${TBBROOT}/lib/intel64/gcc4.8 -ltbb -lsycl -lOpenCL -lpthread -lm -ldl
 
 ifeq ($(DEVICE),nvidia)
 	CC = clang++
-    CFLAGS = -DGPU -DNVIDIA_GPU -w -fsycl -fsycl-targets=nvptx64-nvidia-cuda -I${ONEMKL}/include
+    CFLAGS = -DGPU -DNVIDIA_GPU -fsycl -fsycl-targets=nvptx64-nvidia-cuda -fsycl-unnamed-lambda -I${ONEMKL}/include
     CLINK = -fsycl-device-code-split=per_kernel -lonemkl -L${ONEMKL}/lib
 else ifeq ($(DEVICE),igpu)
 	CFLAGS += -DGPU -DINTEL_GPU
