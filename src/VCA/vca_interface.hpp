@@ -1,8 +1,6 @@
 #ifndef _VCA_INTERFACE_
 #define _VCA_INTERFACE_
 
-#define EPSILON 1.11e-16
-
 class I_VCA {
     public:
         virtual void run(float SNR, const double* image) = 0;
@@ -10,6 +8,7 @@ class I_VCA {
         virtual void clearMemory() = 0;
 
     protected:
+        int pinv_lwork;
         unsigned int lines, samples, bands, targetEndmembers;
         unsigned int *index{nullptr};
         double *Ud{nullptr}, 
@@ -26,13 +25,14 @@ class I_VCA {
                *sumxu{nullptr}, 
                *w{nullptr}, 
                *A{nullptr}, 
-               *A2{nullptr}, 
+               *A_copy{nullptr},
+               *pinvA{nullptr}, 
                *aux{nullptr}, 
                *f{nullptr}, 
                *endmembers{nullptr},
                *pinvS{nullptr}, 
                *pinvU{nullptr}, 
-               *pinvVT{nullptr}, 
-               *Utranstmp{nullptr};
+               *pinvVT{nullptr},
+               *pinv_work{nullptr};
 };
 #endif
