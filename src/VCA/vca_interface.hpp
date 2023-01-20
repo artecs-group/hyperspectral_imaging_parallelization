@@ -8,7 +8,7 @@ class I_VCA {
         virtual void clearMemory() = 0;
 
     protected:
-        int pinv_lwork;
+        int pinv_lwork, lwork;
         unsigned int lines, samples, bands, targetEndmembers;
         unsigned int *index{nullptr};
         double *Ud{nullptr}, 
@@ -33,6 +33,7 @@ class I_VCA {
                *pinvS{nullptr}, 
                *pinvU{nullptr}, 
                *pinvVT{nullptr},
-               *pinv_work{nullptr};
+               *pinv_work{nullptr},
+               *work{nullptr};
 };
 #endif

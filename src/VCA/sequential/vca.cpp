@@ -4,6 +4,7 @@
 #include <numeric>
 #include <algorithm>
 #include <random>
+#include <limits>
 #include "mkl.h"
 
 #include "./vca.hpp"
@@ -39,11 +40,16 @@ SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int 
     pinvU      = new double[targetEndmembers * targetEndmembers]();
     pinvVT     = new double[targetEndmembers * targetEndmembers]();
 
-	pinv_lwork = -1;
 	double work_query;
+	pinv_lwork = -1;
 	LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A_copy, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, &work_query, pinv_lwork);
 	pinv_lwork = (int) work_query;
 	pinv_work = new double[pinv_lwork]();
+
+	lwork = -1;
+	LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, &work_query, lwork);
+	lwork = (int) work_query;
+	work = new double[lwork]();
 }
 
 
@@ -77,6 +83,7 @@ void SequentialVCA::clearMemory() {
     if(pinvU != nullptr) {delete[] pinvU; pinvU = nullptr; }
     if(pinvVT != nullptr) {delete[] pinvVT; pinvVT = nullptr; }
 	if(pinv_work != nullptr) {delete[] pinv_work; pinv_work = nullptr; }
+	if(work != nullptr) {delete[] work; work = nullptr; }
 }
 
 
@@ -84,10 +91,9 @@ void SequentialVCA::run(float SNR, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
     const unsigned int N{lines*samples}; 
-	double sum1{0}, sum2{0}, powery, powerx, mult{0}, sum1Sqrt{0}, alpha{1.0f}, beta{0.f};
+	double sum1{0}, sum2{0}, powery, powerx, mult{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
-    double superb[bands-1];
-    double scarch_pinv[targetEndmembers-1];
+
 	std::uint64_t seed{0};
 	VSLStreamStatePtr rdstream;
 	vslNewStream(&rdstream, VSL_BRNG_MRG32K3A, seed);
@@ -106,22 +112,17 @@ void SequentialVCA::run(float SNR, const double* image) {
 			meanImage[i*N + j] = image[i*N + j] - mean[i];
 	}
 
-	cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
 
 	for(int i = 0; i < bands * bands; i++) 
         svdMat[i] /= N;
 
-    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, superb);
+    LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
+	cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, targetEndmembers, N, bands, alpha, U, bands, meanImage, N, beta, x_p, N);
 
-	for(int i = 0; i < bands; i++)
-		for(int j = 0; j < targetEndmembers; j++)
-			Ud[i*targetEndmembers + j] = VT[i*bands + j];
-
-	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, Ud, targetEndmembers, meanImage, N, beta, x_p, targetEndmembers);
-
-	for(int i = 0; i < N*bands; i++) {
+	for(int i = 0; i < bands*N; i++) {
 		sum1 += image[i] * image[i];
-		if(i < N * targetEndmembers) 
+		if(i < targetEndmembers * N) 
 			sum2 += x_p[i] * x_p[i];
 		if(i < bands) 
 			mult += mean[i] * mean[i];
@@ -145,11 +146,7 @@ void SequentialVCA::run(float SNR, const double* image) {
 #if defined(DEBUG)
 		std::cout << "Select the projective proj."<< std::endl;
 #endif
-		for(int i = 0; i < bands; i++)
-			for(int j = 0; j < targetEndmembers; j++)
-                Ud[i*targetEndmembers + j] = (j < targetEndmembers-1) ? VT[i*bands + j] : 0;
-
-		sum1 = 0;
+		sum1 = std::numeric_limits<double>::lowest();
 		for(int i = 0; i < targetEndmembers; i++) {
 			for(int j = 0; j < N; j++) {
 				if(i == targetEndmembers-1) 
@@ -160,10 +157,9 @@ void SequentialVCA::run(float SNR, const double* image) {
 			if(sum1 < u[i]) 
                 sum1 = u[i];
 		}
+		sum1 = std::sqrt(sum1);
 
-		sum1Sqrt = std::sqrt(sum1);
-
-		cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, Ud, targetEndmembers, x_p, targetEndmembers, beta, Rp, bands);
+		cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, N, beta, Rp, N);
 
 		for(int i = 0; i < bands; i++)
 			for(int j = 0; j < N; j++)
@@ -171,25 +167,21 @@ void SequentialVCA::run(float SNR, const double* image) {
 
 		for(int i = 0; i < targetEndmembers; i++)
 			for(int j = 0; j < N; j++)
-                y[i*N + j] = (i < targetEndmembers-1) ? x_p[i*N + j] : sum1Sqrt;
+                y[i*N + j] = (i < targetEndmembers-1) ? x_p[i*N + j] : sum1;
 	}
     else {
 #if defined(DEBUG)
 		std::cout << "Select proj. to p-1"<< std::endl;
 #endif
-		cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
 
 		for(int i = 0; i < bands*bands; i++)
             svdMat[i] /= N;
 
-		LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, superb);
+		LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
 
-		for(int i = 0; i < bands; i++)
-			for(int j = 0; j < targetEndmembers; j++)
-				Ud[i*targetEndmembers + j] = VT[i*bands + j];
-
-		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, Ud, targetEndmembers, image, N, beta, x_p, targetEndmembers);
-		cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, Ud, targetEndmembers, x_p, targetEndmembers, beta, Rp, bands);
+		cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, targetEndmembers, N, bands, alpha, U, bands, image, N, beta, x_p, N);
+		cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, N, beta, Rp, N);
 
 		for(int i = 0; i < targetEndmembers; i++) {
 			for(int j = 0; j < N; j++)
@@ -223,8 +215,8 @@ void SequentialVCA::run(float SNR, const double* image) {
         std::copy(A, A + targetEndmembers*targetEndmembers, A_copy);
 		pinv(A_copy, targetEndmembers, pinvA, pinvS, pinvU, pinvVT, pinv_work, pinv_lwork);
 
-		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvA, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
-		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, alpha, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvA, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, 1, targetEndmembers, alpha, aux, targetEndmembers, w, 1, beta, f, 1);
 
 	    sum1 = 0;
 	    for(int j = 0; j < targetEndmembers; j++) {
@@ -233,9 +225,9 @@ void SequentialVCA::run(float SNR, const double* image) {
 	    }
 
 	    for(int j = 0; j < targetEndmembers; j++)
-            f[j] /= sqrt(sum1);
+            f[j] /= std::sqrt(sum1);
 
-		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, alpha, N, targetEndmembers, alpha, f, alpha, y, N, beta, sumxu, alpha);
+		cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, 1, N, targetEndmembers, alpha, f, targetEndmembers, y, N, beta, sumxu, N);
 
 	    sum2 = 0;
 	    for(int j = 0; j < N; j++) {
