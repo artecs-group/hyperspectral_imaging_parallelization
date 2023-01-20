@@ -1,7 +1,8 @@
-.vscode
-data/
+.vscode/*
+data/*
+!data/test/
 *.out
 *.o
 main*
 *.exe
-*.txt
+*02.txt
