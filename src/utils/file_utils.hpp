@@ -309,16 +309,20 @@ double* loadEndmemberSignatures(const std::string& filename, int* rows, int* ban
 
     if(!inFile.is_open())
         return nullptr;
-    int size{0};
+
     while(std::getline(inFile, line)) {
         size_t s_pos = line.find("=");
         if(s_pos == std::string::npos)
-            size++;
+            (*bands)++;
+        else {
+            (*rows)++;
+            *bands = 0;
+        }
     }
     inFile.clear();
     inFile.seekg(0, std::ios::beg);
 
-    double* signatures = new double[size];
+    double* signatures = new double[*rows * *bands];
     int i{0};
     while(std::getline(inFile, line)) {
         size_t s_pos = line.find("=");
