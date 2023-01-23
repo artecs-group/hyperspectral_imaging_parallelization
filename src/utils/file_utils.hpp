@@ -302,7 +302,7 @@ int writeEndmemberSignatures(const std::string& filename, int bands, int endmemb
 /*
  * Author: Youssef El Faqir El Rhazoui
  * */
-double* loadEndmemberSignatures(const std::string& filename, int* rows, int* bands) {
+double* loadEndmemberSignatures(const std::string& filename, int* rows, int* cols) {
     std::string line;
     std::ifstream inFile;
     inFile.open(filename, std::ifstream::in);
@@ -313,16 +313,16 @@ double* loadEndmemberSignatures(const std::string& filename, int* rows, int* ban
     while(std::getline(inFile, line)) {
         size_t s_pos = line.find("=");
         if(s_pos == std::string::npos)
-            (*bands)++;
+            (*cols)++;
         else {
             (*rows)++;
-            *bands = 0;
+            *cols = 0;
         }
     }
     inFile.clear();
     inFile.seekg(0, std::ios::beg);
 
-    double* signatures = new double[*rows * *bands];
+    double* signatures = new double[*rows * *cols];
     int i{0};
     while(std::getline(inFile, line)) {
         size_t s_pos = line.find("=");

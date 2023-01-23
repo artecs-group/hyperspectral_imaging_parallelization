@@ -3,7 +3,6 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
-#include "mkl.h"
 #include "../../src/utils/file_utils.hpp"
 #include "../../src/VCA/sequential/vca.hpp"
 
@@ -24,6 +23,14 @@ TEST(VCA_Test, Cuprite) {
 		exit(-1);
 	}
 
+    // Read header wavelenght, which requires bands from previous read
+    double* wavelength = new double[bands]();
+    error = readHeader2(headerFile, wavelength);
+	if(error != 0) {
+        std::cerr << "Error reading wavelength from header file: " << headerFile << std::endl; 
+		exit(-1);
+	}
+
 	double *image = new double[lines*samples*bands]();
 	error = loadImage(binFile, image, lines, samples, bands, dataType, &interleave);
 	if(error != 0) {
@@ -32,16 +39,16 @@ TEST(VCA_Test, Cuprite) {
 	}
 
     // Run VCA to get endmember signatures
-    int n_endmembers = 19;
+    const int n_endmembers = 19;
     SequentialVCA vca = SequentialVCA(lines, samples, bands, n_endmembers);
     vca.run(0, image);
-    double* endmembers = vca.getEndmembers();
+    double* computedSignatures = vca.getEndmembers();
 
     //Load true signatures from its file
     std::string signFile{"../../data/test/cuprite_real_signatures.txt"};
     int sbands{0}, sendm{0};
-    double* signatures = loadEndmemberSignatures(signFile, &sbands, &sendm);
-	if(signatures == nullptr) {
+    double* trueSignatures = loadEndmemberSignatures(signFile, &sendm, &sbands);
+	if(trueSignatures == nullptr) {
         std::cerr << "Error reading signatures file: " << signFile << std::endl;
 		exit(-1);
 	}
@@ -49,29 +56,30 @@ TEST(VCA_Test, Cuprite) {
     // Check values
     double* angles = new double[bands * sendm]();
     auto SAD = [] (double *A, double *B, int size) {
-        double a_dot_a{0}, b_dot_b{0}, dot{0};
+        double dot = 0.0, normA = 0.0, normB = 0.0;
         for (int i = 0; i < size; i++) {
-            a_dot_a += A[i] * A[i];
-            b_dot_b += B[i] * B[i];
             dot += A[i] * B[i];
+            normA += A[i] * A[i];
+            normB += B[i] * B[i];
         }
-        double s = std::acos(dot / (std::sqrt(a_dot_a) * std::sqrt(b_dot_b)));
+        double s = std::acos(dot / std::sqrt(normA * normB));
         return std::abs(s);
     };
 
-    for (int x = 0; x < bands; x++) {
+    double* signs_x = new double[bands];
+    double* signs_y = new double[bands];
+    for (int x = 0; x < n_endmembers; x++) {
         for (int y = 0; y < sendm; y++) {
-            double* endm_x = new double[n_endmembers];
-            double* signature_y = new double[sendm];
-
-            for (int i = 0; i < n_endmembers; i++) endm_x[i] = endmembers[i*bands + x];
-            for (int i = 0; i < sendm; i++) signature_y[i] = signatures[i*sendm + y];
-
-            angles[x*sendm + y] = SAD(endm_x, signature_y, n_endmembers);
-
-            delete[] endm_x;
-            delete[] signature_y;
+            for(int i = 0; i < bands; i++) {
+                signs_x[i] = computedSignatures[x*n_endmembers + i];
+                signs_y[i] = trueSignatures[y*sendm + i];
+                //std::cout << signs_x[i] << ", ";
+            }
+            return;
+            angles[x*sendm + y] = SAD(signs_x, signs_y, bands);
+            //std::cout << angles[x*sendm + y] << "    ";
         }
+        //std::cout << std::endl;
     }
 
     double* result = new double[sendm];
@@ -94,8 +102,11 @@ TEST(VCA_Test, Cuprite) {
 
     delete[] angles;
     delete[] image;
-    delete[] signatures;
+    delete[] trueSignatures;
     delete[] result;
+    delete[] signs_x;
+    delete[] signs_y;
+    delete[] wavelength;
 }
 
 int main(int argc, char** argv) {
