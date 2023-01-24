@@ -34,7 +34,7 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 	sumxu      = sycl::malloc_device<double>(lines * samples, _queue);
 	w          = sycl::malloc_device<double>(targetEndmembers, _queue);
 	A          = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
-	A2         = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
+	A_copy         = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
 	aux        = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
 	f          = sycl::malloc_device<double>(targetEndmembers, _queue);
 	pinvS	   = sycl::malloc_device<double>(targetEndmembers, _queue);
@@ -105,7 +105,7 @@ void SYCL_VCA::clearMemory() {
 	if(sumxu != nullptr) {sycl::free(sumxu, _queue); sumxu = nullptr;}
 	if(w != nullptr) {sycl::free(w, _queue); w = nullptr;}
 	if(A != nullptr) {sycl::free(A, _queue); A = nullptr;}
-	if(A2 != nullptr) {sycl::free(A2, _queue); A2 = nullptr;}
+	if(A_copy != nullptr) {sycl::free(A_copy, _queue); A_copy = nullptr;}
 	if(aux != nullptr) {sycl::free(aux, _queue); aux = nullptr;}
 	if(f != nullptr) {sycl::free(f, _queue); f = nullptr;}
 	if(gesvd_scratchpad != nullptr) {sycl::free(gesvd_scratchpad, _queue); gesvd_scratchpad = nullptr;}
@@ -148,7 +148,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	double* sumxu = this->sumxu;
 	double* w = this->w;
 	double* A = this->A;
-	double* A2 = this->A2;
+	double* A_copy = this->A_copy;
 	double* aux = this->aux;
 	double* f = this->f;
 	double* pinvS = this->pinvS;
@@ -382,11 +382,11 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		oneapi::mkl::rng::generate(distr, engine, targetEndmembers, w);
 		_queue.wait();
 
-		_queue.memcpy(A2, A, sizeof(double)*targetEndmembers*targetEndmembers);
+		_queue.memcpy(A_copy, A, sizeof(double)*targetEndmembers*targetEndmembers);
     	_queue.wait();
 
 		// Start of computation of the pseudo inverse A
-		oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::somevec, targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, pinv_scratchpad, pinv_size);
+		oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::somevec, targetEndmembers, targetEndmembers, A_copy, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, pinv_scratchpad, pinv_size);
 		_queue.wait();
 
 		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
@@ -412,11 +412,11 @@ void SYCL_VCA::run(float SNR, const double* image) {
 			Utranstmp[j*targetEndmembers + i] = pinvS[i] * pinvU[i*targetEndmembers + j];
 		}).wait();
 
-		oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A2, targetEndmembers);
+		oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A_copy, targetEndmembers);
 		_queue.wait();
 		// End of computation of the pseudo inverse A
 
-		oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A2, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
+		oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A_copy, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
 		_queue.wait();
 
 		oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, alpha, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);

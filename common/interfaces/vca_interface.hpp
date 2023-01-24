@@ -1,6 +1,8 @@
 #ifndef _VCA_INTERFACE_
 #define _VCA_INTERFACE_
 
+#define EPSILON 1e-9
+
 class I_VCA {
     public:
         virtual void run(float SNR, const double* image) = 0;
@@ -34,6 +36,7 @@ class I_VCA {
                *pinvU{nullptr}, 
                *pinvVT{nullptr},
                *pinv_work{nullptr},
-               *work{nullptr};
+               *work{nullptr},
+               *Utranstmp{nullptr};
 };
 #endif

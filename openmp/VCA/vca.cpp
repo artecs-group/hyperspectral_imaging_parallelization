@@ -36,7 +36,7 @@ OpenMP_VCA::OpenMP_VCA(int _lines, int _samples, int _bands, unsigned int _targe
 	sumxu      = new double [lines * samples]();
 	w          = new double [targetEndmembers]();
 	A          = new double [targetEndmembers * targetEndmembers]();
-	A2         = new double [targetEndmembers * targetEndmembers]();
+	A_copy         = new double [targetEndmembers * targetEndmembers]();
 	aux        = new double [targetEndmembers * targetEndmembers]();
 	f          = new double [targetEndmembers]();
     index      = new unsigned int [targetEndmembers]();
@@ -68,7 +68,7 @@ void OpenMP_VCA::clearMemory() {
 	if(sumxu != nullptr) {delete[] sumxu; sumxu = nullptr; }
 	if(w != nullptr) {delete[] w; w = nullptr; }
 	if(A != nullptr) {delete[] A; A = nullptr; }
-	if(A2 != nullptr) {delete[] A2; A2 = nullptr; }
+	if(A_copy != nullptr) {delete[] A_copy; A_copy = nullptr; }
 	if(aux != nullptr) {delete[] aux; aux = nullptr; }
 	if(f != nullptr) {delete[] f; f = nullptr; }
     if(index != nullptr) {delete[] index; index = nullptr; }
@@ -261,10 +261,10 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
 
         #pragma omp parallel for simd
 		for (size_t i = 0; i < targetEndmembers*targetEndmembers; i++)
-			A2[i] = A[i];
+			A_copy[i] = A[i];
 
 		// Start of computation of the pseudo inverse A
-        LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
+        LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A_copy, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
 
         double maxi = std::numeric_limits<double>::min();
 		
@@ -287,10 +287,10 @@ void OpenMP_VCA::_runOnCPU(float SNR, const double* image) {
             for (int j = 0; j < targetEndmembers; j++) 
                 Utranstmp[i + j * targetEndmembers] = pinvS[i] * pinvU[j + i * targetEndmembers];
 
-        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A2, targetEndmembers);
+        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A_copy, targetEndmembers);
         // End of computation of the pseudo inverse A
 
-		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A2, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
+		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A_copy, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
 		cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, alpha, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);
 
 		#pragma omp parallel for simd
@@ -365,7 +365,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 	double* sumxu = this->sumxu;
 	double* w = this->w;
 	double* A = this->A;
-	double* A2 = this->A2;
+	double* A_copy = this->A_copy;
 	double* aux = this->aux;
 	double* f = this->f;
 	double* pinvS = this->pinvS;;
@@ -384,7 +384,7 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 	map(alloc: endmembers[0:targetEndmembers*bands], meanImage[0:bands*lines*samples],\
 		Ud[0:bands*targetEndmembers], x_p[0:lines*samples*targetEndmembers], y[0:lines*samples*targetEndmembers],\
 		svdMat[0:bands*bands], Rp[0:bands*lines*samples], w[0:targetEndmembers],\
-		A2[0:targetEndmembers*targetEndmembers], aux[0:targetEndmembers*targetEndmembers],\
+		A_copy[0:targetEndmembers*targetEndmembers], aux[0:targetEndmembers*targetEndmembers],\
 		f[0:targetEndmembers], index[0:targetEndmembers], pinvS[0:targetEndmembers],\
 		pinvU[0:targetEndmembers*targetEndmembers], pinvVT[0:targetEndmembers*targetEndmembers],\
 		Utranstmp[0:targetEndmembers*targetEndmembers], scarch_pinv[0:targetEndmembers-1],\
@@ -596,12 +596,12 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 
 			#pragma omp target teams distribute parallel for
 			for (size_t i = 0; i < targetEndmembers*targetEndmembers; i++)
-				A2[i] = A[i];
+				A_copy[i] = A[i];
 
 			// Start of computation of the pseudo inverse A
-			#pragma omp target data use_device_ptr(A2, pinvS, pinvU, pinvVT)
+			#pragma omp target data use_device_ptr(A_copy, pinvS, pinvU, pinvVT)
 			{
-				LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A2, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
+				LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'S', targetEndmembers, targetEndmembers, A_copy, targetEndmembers, pinvS, pinvU, targetEndmembers, pinvVT, targetEndmembers, scarch_pinv);
 			}
 
 			double maxi = std::numeric_limits<double>::min();
@@ -625,15 +625,15 @@ void OpenMP_VCA::_runOnGPU(float SNR, const double* image) {
 				for (int j = 0; j < targetEndmembers; j++) 
 					Utranstmp[i + j * targetEndmembers] = pinvS[i] * pinvU[j + i * targetEndmembers];
 
-			#pragma omp target data use_device_ptr(A2, pinvVT, Utranstmp)
+			#pragma omp target data use_device_ptr(A_copy, pinvVT, Utranstmp)
 			{
-				cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A2, targetEndmembers);
+				cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, pinvVT, targetEndmembers, Utranstmp, targetEndmembers, beta, A_copy, targetEndmembers);
 			}
 			// End of computation of the pseudo inverse A
 
-			#pragma omp target data use_device_ptr(A2, A, aux)
+			#pragma omp target data use_device_ptr(A_copy, A, aux)
 			{
-				cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A2, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
+				cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A_copy, targetEndmembers, A, targetEndmembers, beta, aux, targetEndmembers);
 			}
 			
 			#pragma omp target data use_device_ptr(aux, w, f)

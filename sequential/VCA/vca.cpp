@@ -8,7 +8,7 @@
 #include "mkl.h"
 
 #include "vca.hpp"
-#include "../../common/utils/file_utils.hpp"
+#include "../../common/utils/matrix_operations.hpp"
 
 SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers){
     lines   = _lines;
