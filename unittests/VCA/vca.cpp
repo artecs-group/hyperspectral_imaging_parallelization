@@ -10,8 +10,8 @@
  * Tests sequential vca with Cuprite file. 
 */
 TEST(VCA_Test, Cuprite) {
-	std::string binFile{"../../data/Cuprite"};
-    std::string headerFile{"../../data/Cuprite.hdr"};
+	std::string binFile{CMAKE_PROJECT_DIR "/data/Cuprite"};
+    std::string headerFile{CMAKE_PROJECT_DIR "/data/Cuprite.hdr"};
 	std::string interleave;
 	std::string waveUnit;
 	int lines{0}, samples{0}, bands{0}, dataType{0}, byteOrder{0};
@@ -45,7 +45,7 @@ TEST(VCA_Test, Cuprite) {
     double* computedSignatures = vca.getEndmembers();
 
     //Load true signatures from its file
-    std::string signFile{"../../data/test/cuprite_real_signatures.txt"};
+    std::string signFile{CMAKE_PROJECT_DIR "/data/test/cuprite_real_signatures.txt"};
     int sbands{0}, sendm{0};
     double* trueSignatures = loadEndmemberSignatures(signFile, &sendm, &sbands);
 	if(trueSignatures == nullptr) {

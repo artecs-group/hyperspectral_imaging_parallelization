@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(This vca.exe)
+set(This matrix_operations.exe)
 
-set(Sources
-    vca.cpp
-    ${PROJECT_SOURCE_DIR}/src/VCA/sequential/vca.cpp
+set(Headers
+    ${PROJECT_SOURCE_DIR}/src/utils/matrix_operations.hpp
 )
 
-add_executable(${This} ${Sources})
-add_definitions(-DCMAKE_PROJECT_DIR="${PROJECT_SOURCE_DIR}")
+set(Sources
+    matrix_operations.cpp
+)
+
+add_executable(${This} ${Sources} ${Headers})
 target_compile_options(${This} PRIVATE "-I\"${MKLROOT}/include\"" "-qmkl" "-DMKL_ILP64" "-O3")
 target_link_libraries(${This} GTest::GTest GTest::Main)
 link_directories(${MKLROOT}/lib/intel64)

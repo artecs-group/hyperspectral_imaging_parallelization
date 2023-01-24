@@ -10,4 +10,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 find_program(CMAKE_CXX_COMPILER NAMES icpx)
 set(CMAKE_CXX_COMPILER icpx)
 
+find_package(GTest REQUIRED)
+enable_testing()
+
 add_subdirectory(unittests)

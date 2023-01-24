@@ -6,3 +6,4 @@ data/*
 main*
 *.exe
 *02.txt
+build/
