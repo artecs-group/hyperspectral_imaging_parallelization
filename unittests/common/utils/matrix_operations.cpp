@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include "mkl.h"
-#include "../../src/utils/matrix_operations.hpp"
+#include "../../../common/utils/matrix_operations.hpp"
 
 /**
  * This test checks the property that states: A = A * pinv(A) *A

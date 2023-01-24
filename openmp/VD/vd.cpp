@@ -12,7 +12,7 @@
 #include "mkl_omp_offload.h"
 #endif
 
-#include "./vd.hpp"
+#include "vd.hpp"
 
 OpenMP_VD::OpenMP_VD(int _lines, int _samples, int _bands){
     lines      = _lines;

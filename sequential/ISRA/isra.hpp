@@ -1,7 +1,7 @@
 #ifndef _ISRA_SEQUENTIAL_
 #define _ISRA_SEQUENTIAL_
 
-#include "../isra_interface.hpp"
+#include "../../common/interfaces/isra_interface.hpp"
 
 class SequentialISRA: I_ISRA {
     public:

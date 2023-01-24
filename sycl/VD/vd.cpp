@@ -6,7 +6,7 @@
 #include <CL/sycl.hpp>
 #include "oneapi/mkl.hpp"
 
-#include "./vd.hpp"
+#include "vd.hpp"
 
 constexpr oneapi::mkl::transpose trans = oneapi::mkl::transpose::trans;
 constexpr oneapi::mkl::transpose nontrans = oneapi::mkl::transpose::nontrans;

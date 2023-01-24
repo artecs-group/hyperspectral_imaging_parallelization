@@ -1,7 +1,7 @@
 #ifndef _VD_SEQUENTIAL_
 #define _VD_SEQUENTIAL_
 
-#include "../vd_interface.hpp"
+#include "../../common/interfaces/vd_interface.hpp"
 
 class SequentialVD: I_VD {
     public:

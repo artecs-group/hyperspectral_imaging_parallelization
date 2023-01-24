@@ -12,7 +12,7 @@
 #include "mkl_omp_offload.h"
 #endif
 
-#include "./isra.hpp"
+#include "isra.hpp"
 
 OpenMP_ISRA::OpenMP_ISRA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers){
     lines            = _lines;

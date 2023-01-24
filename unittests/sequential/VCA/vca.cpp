@@ -3,8 +3,8 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
-#include "../../src/utils/file_utils.hpp"
-#include "../../src/VCA/sequential/vca.hpp"
+#include "../../../common/utils/file_utils.hpp"
+#include "../../../sequential/VCA/vca.hpp"
 
 /**
  * Tests sequential vca with Cuprite file. 

@@ -25,9 +25,10 @@ if(NOT IMPL OR impl_idx EQUAL -1)
 endif()
 
 list(FIND supported_devices ${DEVICE} device_idx)
-if(NOT DEVICE OR device_idx EQUAL -1)
+if(device_idx EQUAL -1)
     message(FATAL_ERROR "Please specify DEVICE (one of: ${supported_devices})")
 endif()
+
 
 if(IMPL STREQUAL "SYCL" AND DEVICE STREQUAL "NGPU")
     find_program(CMAKE_CXX_COMPILER NAMES clang++)
@@ -40,5 +41,27 @@ endif()
 find_package(GTest REQUIRED)
 enable_testing()
 
-add_subdirectory(src)
+if(DEVICE STREQUAL "IGPU")
+    set(DEV "GPU" PARENT_SCOPE)
+    set(DEV_TYPE "INTEL_GPU" PARENT_SCOPE)
+elseif(DEVICE STREQUAL "NGPU")
+    set(DEV "GPU" PARENT_SCOPE)
+    set(DEV_TYPE "NVIDIA_GPU" PARENT_SCOPE)
+else() # CPU
+    set(DEV "CPU" PARENT_SCOPE)
+    set(DEV_TYPE "X86" PARENT_SCOPE)
+endif()
+
+if(IMPL STREQUAL "Sequential")
+    set(IMPLEMENTATION "SEQUENTIAL" PARENT_SCOPE)
+    add_subdirectory(sequential)
+elseif(IMPL STREQUAL "OpenMP")
+    set(IMPLEMENTATION "OPENMP" PARENT_SCOPE)
+    add_subdirectory(openmp)
+else() # SYCL
+    set(IMPLEMENTATION "SYCL" PARENT_SCOPE)
+    add_subdirectory(sycl)
+endif()
+
+add_subdirectory(common)
 add_subdirectory(unittests)

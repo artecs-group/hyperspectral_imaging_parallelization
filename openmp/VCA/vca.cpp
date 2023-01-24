@@ -13,7 +13,7 @@
 #include "mkl_omp_offload.h"
 #endif
 
-#include "./vca.hpp"
+#include "vca.hpp"
 
 OpenMP_VCA::OpenMP_VCA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers){
     lines   = _lines;

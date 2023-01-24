@@ -5,9 +5,8 @@
 #include <algorithm>
 #include <CL/sycl.hpp>
 #include "oneapi/mkl.hpp"
-//#include "oneapi/mkl/rng.hpp"
 
-#include "./vca.hpp"
+#include "vca.hpp"
 
 constexpr oneapi::mkl::transpose trans = oneapi::mkl::transpose::trans;
 constexpr oneapi::mkl::transpose nontrans = oneapi::mkl::transpose::nontrans;

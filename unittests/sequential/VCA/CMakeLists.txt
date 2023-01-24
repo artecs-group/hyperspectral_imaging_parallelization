@@ -4,7 +4,7 @@ set(This vca.exe)
 
 set(Sources
     vca.cpp
-    ${PROJECT_SOURCE_DIR}/src/VCA/sequential/vca.cpp
+    ${PROJECT_SOURCE_DIR}/sequential/VCA/vca.cpp
 )
 
 add_executable(${This} ${Sources})

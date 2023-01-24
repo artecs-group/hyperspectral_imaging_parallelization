@@ -1,7 +1,7 @@
 #ifndef _VD_OPENMP_
 #define _VD_OPENMP_
 
-#include "../vd_interface.hpp"
+#include "../../common/interfaces/vd_interface.hpp"
 
 class OpenMP_VD: I_VD {
     public:

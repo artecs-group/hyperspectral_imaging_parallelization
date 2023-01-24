@@ -5,7 +5,7 @@
 #include <algorithm>
 #include "mkl.h"
 
-#include "./vd.hpp"
+#include "vd.hpp"
 
 SequentialVD::SequentialVD(int _lines, int _samples, int _bands){
     lines      = _lines;

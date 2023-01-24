@@ -1,7 +1,7 @@
 #ifndef _ISRA_OPENMP_
 #define _ISRA_OPENMP_
 
-#include "../isra_interface.hpp"
+#include "../../common/interfaces/isra_interface.hpp"
 
 class OpenMP_ISRA: I_ISRA {
     public:

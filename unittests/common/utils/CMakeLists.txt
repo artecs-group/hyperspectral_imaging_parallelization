@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.13)
 set(This matrix_operations.exe)
 
 set(Headers
-    ${PROJECT_SOURCE_DIR}/src/utils/matrix_operations.hpp
+    ${PROJECT_SOURCE_DIR}/common/utils/matrix_operations.hpp
 )
 
 set(Sources

@@ -1,7 +1,7 @@
 #ifndef _VCA_SEQUENTIAL_
 #define _VCA_SEQUENTIAL_
 
-#include "../vca_interface.hpp"
+#include "../../common/interfaces/vca_interface.hpp"
 
 class SequentialVCA: I_VCA {
     public:

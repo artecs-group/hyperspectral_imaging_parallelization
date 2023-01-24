@@ -1,8 +1,8 @@
 #ifndef _VD_SYCL_
 #define _VD_SYCL_
 
-#include "../../utils/sycl_selector.hpp"
-#include "../vd_interface.hpp"
+#include "../utils/sycl_selector.hpp"
+#include "../../common/interfaces/vd_interface.hpp"
 
 class SYCL_VD: I_VD {
     public:

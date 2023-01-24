@@ -1,8 +1,8 @@
 #ifndef _ISRA_SYCL_
 #define _ISRA_SYCL_
 
-#include "../../utils/sycl_selector.hpp"
-#include "../isra_interface.hpp"
+#include "../utils/sycl_selector.hpp"
+#include "../../common/interfaces/isra_interface.hpp"
 
 class SYCL_ISRA: I_ISRA {
     public:

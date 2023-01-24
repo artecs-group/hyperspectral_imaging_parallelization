@@ -1,7 +1,7 @@
 #ifndef _VCA_OPENMP_
 #define _VCA_OPENMP_
 
-#include "../vca_interface.hpp"
+#include "../../common/interfaces/vca_interface.hpp"
 
 class OpenMP_VCA: I_VCA {
     public:

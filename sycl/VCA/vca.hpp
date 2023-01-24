@@ -3,8 +3,8 @@
 
 #include <CL/sycl.hpp>
 
-#include "../../utils/sycl_selector.hpp"
-#include "../vca_interface.hpp"
+#include "../utils/sycl_selector.hpp"
+#include "../../common/interfaces/vca_interface.hpp"
 
 
 template <typename T, typename I>
