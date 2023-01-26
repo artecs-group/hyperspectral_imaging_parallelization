@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 
-add_subdirectory(common)
-add_subdirectory(sequential)
+if(CMAKE_CXX_COMPILER STREQUAL icpx)
+    add_subdirectory(common)
+    add_subdirectory(sequential)
+endif()

@@ -11,10 +11,10 @@ set(Sources
 )
 
 add_executable(${This} ${Sources} ${Headers})
-target_compile_options(${This} PRIVATE "-I\"${MKLROOT}/include\"" "-qmkl" "-DMKL_ILP64" "-O3")
-target_link_libraries(${This} GTest::GTest GTest::Main)
-link_directories(${MKLROOT}/lib/intel64)
-target_link_libraries(${This} -Wl,--start-group libmkl_intel_lp64.a libmkl_sequential.a libmkl_core.a -Wl,--end-group -lpthread -lm -ldl)
+target_compile_options(${This} PRIVATE "-qmkl" "-DMKL_ILP64" "-O3")
+target_include_directories(${This} PRIVATE $ENV{MKLROOT}/include)
+target_link_directories(${This} PRIVATE $ENV{MKLROOT}/lib/intel64)
+target_link_libraries(${This} GTest::GTest GTest::Main "-Wl,--start-group" mkl_intel_lp64 mkl_sequential mkl_core "-Wl,--end-group" pthread m dl)
 
 add_test(
     NAME ${This} 

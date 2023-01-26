@@ -13,4 +13,5 @@ set(Sources
 add_library(${This} ${Sources} ${Headers})
 add_compile_options(-g $<$<BOOL:${WITH_DEBUG}>)
 add_definitions(-D"${IMPLEMENTATION}" -D"${DEV}" -D"${DEV_TYPE}" -D"${DEBUG}")
-target_compile_options(${This} PRIVATE "-I${MKLROOT}/include" "-qmkl" "-DMKL_ILP64" "-O3")
+target_include_directories(${This} PRIVATE $ENV{MKLROOT}/include)
+target_compile_options(${This} PRIVATE "-qmkl" "-DMKL_ILP64" "-O3")
