@@ -245,9 +245,6 @@ void SequentialVCA::run(float SNR, const double* image) {
             endmembers[j * targetEndmembers + i] = Rp[j + bands * index[i]];
     }
     /******************/
-    for (int j = 0; j < 10; j++)
-        std::cout << endmembers[j] << ", ";
-    std::cout << std::endl;
 
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
