@@ -19,56 +19,56 @@
 #endif
 
 int main(int argc, char* argv[]) {
-	if(argc != 5) {
+    if (argc != 5) {
         std::cout << "Parameters are not correct." << std::endl
-                  << "./main <Image Filename> <Approximation value> <Signal noise ratio (SNR)> <Max iterations> " << std::endl;
-		exit(-1);
-	}
+            << "./main <Image Filename> <Approximation value> <Signal noise ratio (SNR)> <Max iterations> " << std::endl;
+        exit(-1);
+    }
 
-	// Read image
-	std::string filename;
-	std::string interleave;
-	std::string waveUnit;
-	int lines{0}, samples{0}, bands{0}, dataType{0}, byteOrder{0};
+    // Read image
+    std::string filename;
+    std::string interleave;
+    std::string waveUnit;
+    int lines{0}, samples{0}, bands{0}, dataType{0}, byteOrder{0};
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float appTime{0.f};
 
     // Read header first parameters
     filename = argv[1];
     filename += ".hdr";
-	int error = readHeader1(filename, &lines, &samples, &bands, &dataType, &interleave, &byteOrder, &waveUnit);
-	if(error != 0) {
-        std::cerr << "Error reading header file: " << filename << std::endl; 
-		exit(-1);
-	}
+    int error = readHeader1(filename, &lines, &samples, &bands, &dataType, &interleave, &byteOrder, &waveUnit);
+    if (error != 0) {
+        std::cerr << "Error reading header file: " << filename << std::endl;
+        exit(-1);
+    }
 
     // Read header wavelenght, which requires bands from previous read
     double* wavelength = new double[bands]();
     error = readHeader2(filename, wavelength);
-	if(error != 0) {
-        std::cerr << "Error reading wavelength from header file: " << filename << std::endl; 
-		exit(-1);
-	}
+    if (error != 0) {
+        std::cerr << "Error reading wavelength from header file: " << filename << std::endl;
+        exit(-1);
+    }
 
-	double *image = new double[lines*samples*bands]();
+    double* image = new double[lines * samples * bands]();
     filename = argv[1];
-	error = loadImage(filename, image, lines, samples, bands, dataType, &interleave);
-	if(error != 0) {
+    error = loadImage(filename, image, lines, samples, bands, dataType, &interleave);
+    if (error != 0) {
         std::cerr << "Error reading image file: " << argv[1] << std::endl;
-		exit(-1);
-	}
+        exit(-1);
+    }
 
     int approxVal = atoi(argv[2]);
-    float SNR     = atof(argv[3]);
-    int maxIter   = atoi(argv[4]);
+    float SNR = atof(argv[3]);
+    int maxIter = atoi(argv[4]);
 
     std::cout << std::endl << "Parameters:" << std::endl
-                    << "    -> Lines                    = " << lines << std::endl
-                    << "    -> Samples                  = " << samples << std::endl
-                    << "    -> Bands                    = " << bands << std::endl
-                    << "    -> Approximation value (VD) = " << approxVal << std::endl
-                    << "    -> SNR (VCA)                = " << SNR << std::endl
-                    << "    -> Max iterations (ISRA)    = " << maxIter << std::endl;
+        << "    -> Lines                    = " << lines << std::endl
+        << "    -> Samples                  = " << samples << std::endl
+        << "    -> Bands                    = " << bands << std::endl
+        << "    -> Approximation value (VD) = " << approxVal << std::endl
+        << "    -> SNR (VCA)                = " << SNR << std::endl
+        << "    -> Max iterations (ISRA)    = " << maxIter << std::endl;
     std::cout << std::endl << "Starting image processing ";
     start = std::chrono::high_resolution_clock::now();
 
@@ -89,25 +89,24 @@ int main(int argc, char* argv[]) {
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
 #if defined(SYCL)
-SYCL_VCA vca = SYCL_VCA(lines, samples, bands, vd.getNumberEndmembers());
+    SYCL_VCA vca = SYCL_VCA(lines, samples, bands, vd.getNumberEndmembers());
 #elif defined(OPENMP)
-OpenMP_VCA vca = OpenMP_VCA(lines, samples, bands, vd.getNumberEndmembers());
+    OpenMP_VCA vca = OpenMP_VCA(lines, samples, bands, vd.getNumberEndmembers());
 #else
-SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers());
+    SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers());
 #endif
 
     std::cout << "---------------- VCA ----------------" << std::endl;
     vca.run(SNR, image);
     vca.clearMemory();
-    writeEndmemberSignatures("End-Cupriteb-c-02.txt", bands, vd.getNumberEndmembers(), vca.getEndmembers());
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
 #if defined(SYCL)
-SYCL_ISRA isra = SYCL_ISRA(lines, samples, bands, vd.getNumberEndmembers());
+    SYCL_ISRA isra = SYCL_ISRA(lines, samples, bands, vd.getNumberEndmembers());
 #elif defined(OPENMP)
-OpenMP_ISRA isra = OpenMP_ISRA(lines, samples, bands, vd.getNumberEndmembers());
+    OpenMP_ISRA isra = OpenMP_ISRA(lines, samples, bands, vd.getNumberEndmembers());
 #else
-SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembers());
+    SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembers());
 #endif
 
     std::cout << "---------------- ISRA ----------------" << std::endl;
@@ -122,21 +121,22 @@ SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembe
     filename = argv[1];
     filename += "_processed.hdr";
     std::cout << "Writing results on: " << filename << std::endl;
-	error = writeHeader(filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave, byteOrder, waveUnit, wavelength);
-	if(error != 0) {
+    error = writeHeader(filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave, byteOrder, waveUnit, wavelength);
+    if (error != 0) {
         std::cerr << "Error writing endmembers header file on: " << filename << std::endl;
-		return error;
-	}
+        return error;
+    }
 
     filename = argv[1];
     filename += "_processed";
-	error = writeResult(isra.getAbundanceMatrix(), filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave);
-	if(error != 0) {
+    error = writeResult(isra.getAbundanceMatrix(), filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave);
+    writeEndmemberSignatures("End-Cupriteb-c-02.txt", bands, vd.getNumberEndmembers(), vca.getEndmembers());
+    if (error != 0) {
         std::cerr << "Error writing endmembers file on: " << filename << std::endl;
-		return error;
-	}
+        return error;
+    }
 
-	delete[] image;
-	delete[] wavelength;
-	return 0;
+    delete[] image;
+    delete[] wavelength;
+    return 0;
 }

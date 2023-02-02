@@ -1,8 +1,6 @@
 #ifndef _MATRIX_OPERATIONS_
 #define _MATRIX_OPERATIONS_
 
-#include<iostream>
-#include <algorithm>
 #include "mkl.h"
 
 #define EPSILON 1.0e-9 //1.11e-16
@@ -20,7 +18,7 @@ inline int pinv(double* A, int n, double* pinvA, double* S, double* U, double* V
         // S^-1
         double s = (S[i] > EPSILON) ? 1.0 / S[i] : S[i];
         // Vt = Vt * S^-1
-        cblas_dscal(n, s, &VT[i*n], 1);
+        cblas_dscal(n, s, &VT[i * n], 1);
     }
 
     // pinv(A) = (Vt)t * Ut
