@@ -15,7 +15,7 @@ SequentialISRA::SequentialISRA(int _lines, int _samples, int _bands, unsigned in
 
     abundanceMatrix = new double[targetEndmembers * lines * samples]();
     numerator = new double[lines * samples * targetEndmembers]();
-    aux = new double[lines * samples * bands]();
+    aux = new double[targetEndmembers * targetEndmembers]();
     denominator = new double[lines * samples * targetEndmembers]();
 }
 
@@ -32,6 +32,39 @@ void SequentialISRA::clearMemory() {
 }
 
 
+void SequentialISRA::preProcessAbundance(const double* image, double* Ab,  const double* e, int targetEndmembers, int lines, int samples, int bands) {
+	double alpha{1.0}, beta{0.0};
+	double* Et_E = new double[targetEndmembers*targetEndmembers];
+
+    // Et_E[target * target] = e[bands * target] * e[bands * target]
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, targetEndmembers, bands, alpha, e, targetEndmembers, e, targetEndmembers, beta, Et_E, targetEndmembers);
+	invTR(Et_E, targetEndmembers);
+
+	double* COMPUT = new double[targetEndmembers*bands];
+    //COMPUT[target * bands] = Et_E[target * target] * e[bands * target]
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, bands, targetEndmembers, alpha, Et_E, targetEndmembers, e, targetEndmembers, beta, COMPUT, targetEndmembers);
+
+    // Ab[N * target] = image[bands * N] * COMPUT[target * bands]
+	const int N = lines*samples;
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, image, N, COMPUT, targetEndmembers, beta, Ab, N);
+	
+    // remove negatives
+	for (int i = 0; i < N*targetEndmembers; i++)
+        Ab[i] = (Ab[i] < 0.0) ? 0.00001 : Ab[i];
+    
+    delete[] Et_E;
+    delete[] COMPUT;
+}
+
+
+void SequentialISRA::invTR(double* A, int targetEndmembers) {
+    lapack_int* ipiv = new lapack_int[targetEndmembers];
+    LAPACKE_dgetrf(LAPACK_COL_MAJOR, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv);
+    LAPACKE_dgetri(LAPACK_COL_MAJOR, targetEndmembers, A, targetEndmembers, ipiv);
+    delete[] ipiv;
+}
+
+
 void SequentialISRA::run(int maxIter, const double* image, const double* endmembers) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tIsra{0.f};
@@ -40,12 +73,12 @@ void SequentialISRA::run(int maxIter, const double* image, const double* endmemb
 
     start = std::chrono::high_resolution_clock::now();
 
-    std::fill(abundanceMatrix, abundanceMatrix + (N * targetEndmembers), 1);
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, N, targetEndmembers, bands, alpha, image, N, endmembers, bands, beta, numerator, targetEndmembers);
+    preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, image, N, endmembers, targetEndmembers, beta, numerator, N);
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, targetEndmembers, bands, alpha, endmembers, targetEndmembers, endmembers, targetEndmembers, beta, aux, targetEndmembers);
 
-    for (int i = 0; i < maxIter; i++) {
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, N, bands, targetEndmembers, alpha, abundanceMatrix, targetEndmembers, endmembers, bands, beta, aux, bands);
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, aux, bands, endmembers, bands, beta, denominator, targetEndmembers);
+    for (int i = 0; i < 1; i++) {       
+        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, targetEndmembers, alpha, abundanceMatrix, N, aux, targetEndmembers, beta, denominator, N);
 
         for (int j = 0; j < N * targetEndmembers; j++)
             abundanceMatrix[j] = abundanceMatrix[j] * (numerator[j] / denominator[j]);
