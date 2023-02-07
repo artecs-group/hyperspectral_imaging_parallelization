@@ -176,32 +176,28 @@ int parseAndWriteImage(int lines, int samples, int bands, int op, const std::str
 
     switch(op) {
         case 0:
-            for(int i = 0; i < lines*samples*bands; i++){
+            for(int i = 0; i < lines*samples*bands; i++)
                 imageT[i] = (T)image[i];
-                outFile.write(reinterpret_cast<char*>(&imageT[i]), sizeof(T));
-            }
             break;
 
         case 1:
             for(int i = 0; i < bands; i++)
-                for(int j = 0; j < lines*samples; j++){
+                for(int j = 0; j < lines*samples; j++)
                     imageT[j*bands + i] = (T)image[i*lines*samples + j];
-                    outFile.write(reinterpret_cast<char*>(&imageT[j*bands + i]), sizeof(T));
-                }
             break;
 
         case 2:
             for(int i = 0; i < lines; i++)
                 for(int j = 0; j < bands; j++)
-                    for(int k = 0; k < samples; k++){
+                    for(int k = 0; k < samples; k++)
                         imageT[i*bands*samples + (j*samples + k)] = (T)image[j*lines*samples + (i*samples + k)];
-                        outFile.write(reinterpret_cast<char*>(&imageT[i*bands*samples + (j*samples + k)]), sizeof(T));
-                    }
+            break;
+        default:
             break;
     }
-    
+
+    outFile.write(reinterpret_cast<char*>(imageT), lines * samples * bands * sizeof(T));
     outFile.close();
-    delete[] imageT;
     return 0;
 }
 
@@ -212,9 +208,7 @@ int parseAndWriteImage(int lines, int samples, int bands, int op, const std::str
 int writeResult(double* image, const std::string& filename, int lines, int samples,
     int bands, int dataType, const std::string& interleave)
 {
-	short int* imageSI;
-	float* imageF;
-	double* imageD;
+    int info{0};
 	int op{0};
 
     if(interleave == "bsq") op = 0;
@@ -222,20 +216,23 @@ int writeResult(double* image, const std::string& filename, int lines, int sampl
     else if(interleave == "bil") op = 2;
 
 	if(dataType == 2) {
-		imageSI = new short int[lines*samples*bands];
-        return parseAndWriteImage(lines, samples, bands, op, filename, image, imageSI);
+		short int* imageSI = new short int[lines*samples*bands];
+        info = parseAndWriteImage(lines, samples, bands, op, filename, image, imageSI);
+        delete[] imageSI;
 	}
 
 	else if(dataType == 4) {
-		imageF = new float[lines*samples*bands];
-        return parseAndWriteImage(lines, samples, bands, op, filename, image, imageF);
+		float* imageF = new float[lines*samples*bands];
+        info = parseAndWriteImage(lines, samples, bands, op, filename, image, imageF);
+        delete[] imageF;
 	}
 
 	else if(dataType == 5) {
-		imageD = new double[lines*samples*bands];
-        return parseAndWriteImage(lines, samples, bands, op, filename, image, imageD);
+		double* imageD = new double[lines*samples*bands];
+        info = parseAndWriteImage(lines, samples, bands, op, filename, image, imageD);
+        delete[] imageD;
 	}
-    return 0;
+    return info;
 }
 
 
@@ -263,15 +260,17 @@ int writeHeader(const std::string& filename, int lines, int samples, int bands, 
     if(interleave.length() != 0) outFile << "interleave = " << interleave << std::endl;
     if(byteOrder != 0) outFile << "byte order = " << byteOrder << std::endl;
     if(waveUnit.length() != 0) {
-        outFile << "wavelength units = " << waveUnit << std::endl
-                << "wavelength = {" << std::endl;
-        for(int i = 0; i < bands; i++) {
-            if(i == 0) outFile << wavelength[i];
-            else
-                if(i % 3 == 0) outFile << ", " << wavelength[i] << std::endl;
-                else outFile << ", " << wavelength[i];
+        outFile << "wavelength units = " << waveUnit << std::endl;
+        if(waveUnit != "Unknown") {
+            outFile << "wavelength = {" << std::endl;
+            for(int i = 0; i < bands; i++) {
+                if(i == 0) outFile << wavelength[i];
+                else
+                    if(i % 3 == 0) outFile << ", " << wavelength[i] << std::endl;
+                    else outFile << ", " << wavelength[i];
+            }
+            outFile << "}";
         }
-        outFile << "}";
     }
     outFile.close();
     return 0;
