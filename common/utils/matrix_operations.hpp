@@ -12,7 +12,7 @@
 inline int pinv(double* A, int n, double* pinvA, double* S, double* U, double* VT, double* work, int lwork) {
     constexpr double alpha{1.0f}, beta{0.0f};
     // A = S U Vt
-    LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'S', n, n, A, n, S, U, n, VT, n, work, lwork);
+    LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'S', n, n, A, n, S, U, n, VT, n, work, lwork);
 
     for (int i = 0; i < n; i++) {
         // S^-1
@@ -22,7 +22,7 @@ inline int pinv(double* A, int n, double* pinvA, double* S, double* U, double* V
     }
 
     // pinv(A) = (Vt)t * Ut
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans, n, n, n, alpha, VT, n, U, n, beta, pinvA, n);
+    cblas_dgemm(CblasColMajor, CblasTrans, CblasTrans, n, n, n, alpha, VT, n, U, n, beta, pinvA, n);
     return 0;
 }
 
