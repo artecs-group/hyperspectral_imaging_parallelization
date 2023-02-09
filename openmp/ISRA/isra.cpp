@@ -40,6 +40,16 @@ void OpenMP_ISRA::clearMemory() {
 }
 
 
+void OpenMP_ISRA::preProcessAbundance(const double* image, double* Ab, const double* e, int targetEndmembers, int lines, int samples, int bands) {
+
+}
+
+
+void OpenMP_ISRA::invTR(double* A, int p) {
+    
+}
+
+
 void OpenMP_ISRA::runOnCPU(int maxIter, const double* image, const double* endmembers) {
     unsigned int N{lines * samples};
     double alpha{1}, beta{0};
