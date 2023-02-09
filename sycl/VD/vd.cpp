@@ -28,7 +28,7 @@ SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
     mean       = sycl::malloc_device<double>(bands, _queue);
     _scrach_size = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(
                     _queue, 
-                    oneapi::mkl::jobsvd::novec, 
+                    oneapi::mkl::jobsvd::somevec, 
                     oneapi::mkl::jobsvd::novec, 
                     bands, bands, bands, bands, bands
                 );
@@ -122,8 +122,8 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     }).wait();
 
     // SVD
-    oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::novec, oneapi::mkl::jobsvd::novec, bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, gesvd_scratchpad, _scrach_size);
-    oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::novec, oneapi::mkl::jobsvd::novec, bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, gesvd_scratchpad, _scrach_size);
+    oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::novec, bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, gesvd_scratchpad, _scrach_size);
+    oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::novec, bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, gesvd_scratchpad, _scrach_size);
     _queue.wait();
 
     // Estimation
