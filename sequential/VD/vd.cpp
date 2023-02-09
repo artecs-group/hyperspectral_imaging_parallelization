@@ -69,7 +69,7 @@ void SequentialVD::run(const int approxVal, const double* image) {
             meanImage[i * N + j] = image[i * N + j] - mean;
     }
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
+    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
 
     //correlation
     for (int j = 0; j < bands; j++)
@@ -77,8 +77,8 @@ void SequentialVD::run(const int approxVal, const double* image) {
             Corr[i * bands + j] = Cov[i * bands + j] + (meanSpect[i] * meanSpect[j]);
 
     //SVD
-    LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
-    LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
+    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
+    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
 
     //estimation
     std::fill(count, count + FPS, 0);
