@@ -91,8 +91,8 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
         	Corr[i*bands + j] = Cov[i*bands + j]+(meanSpect[i] * meanSpect[j]);
 
 	//SVD
-    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
-    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
+    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
+    LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
 
     //estimation
     #pragma omp parallel for simd
@@ -179,12 +179,12 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
         //SVD
         #pragma omp target data use_device_ptr(Cov, CovEigVal, U, VT) device(default_dev)
         {
-            LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
+            LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
         }
 
         #pragma omp target data use_device_ptr(Corr, CorrEigVal, U, VT) device(default_dev)
         {
-            LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'N', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
+            LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
         }
 
         //estimation

@@ -8,7 +8,6 @@
 #include "mkl.h"
 
 #include "vca.hpp"
-#include "../../common/utils/matrix_operations.hpp"
 
 SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers) {
     lines = _lines;
@@ -32,7 +31,6 @@ SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int 
     w = new double[targetEndmembers]();
     A = new double[targetEndmembers * targetEndmembers]();
     A_copy = new double[targetEndmembers * targetEndmembers]();
-    pinvA = new double[targetEndmembers * targetEndmembers]();
     aux = new double[targetEndmembers * targetEndmembers]();
     f = new double[targetEndmembers]();
     index = new unsigned int[targetEndmembers]();
@@ -75,7 +73,6 @@ void SequentialVCA::clearMemory() {
     if (w != nullptr) { delete[] w; w = nullptr; }
     if (A != nullptr) { delete[] A; A = nullptr; }
     if (A_copy != nullptr) { delete[] A_copy; A_copy = nullptr; }
-    if (pinvA != nullptr) { delete[] pinvA; pinvA = nullptr; }
     if (aux != nullptr) { delete[] aux; aux = nullptr; }
     if (f != nullptr) { delete[] f; f = nullptr; }
     if (index != nullptr) { delete[] index; index = nullptr; }
@@ -225,10 +222,10 @@ void SequentialVCA::run(float SNR, const double* image) {
         vdRngGaussian(VSL_RNG_METHOD_GAUSSIAN_BOXMULLER2, rdstream, targetEndmembers, w, 0.0, 1.0);
 
         std::copy(A, A + targetEndmembers * targetEndmembers, A_copy);
-        pinv(A_copy, targetEndmembers, pinvA, pinvS, pinvU, pinvVT, pinv_work, pinv_lwork);
+        pinv(A_copy, targetEndmembers, pinvS, pinvU, pinvVT, pinv_work, pinv_lwork);
 
         //aux[target, target] = A[target, target] * pinvA[target, target]
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A, targetEndmembers, pinvA, targetEndmembers, beta, aux, targetEndmembers);
+        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A, targetEndmembers, A_copy, targetEndmembers, beta, aux, targetEndmembers);
         
         //f[target, 1] = aux[target, target] * w[target, 1]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, 1, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);
