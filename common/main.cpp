@@ -98,6 +98,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "---------------- VCA ----------------" << std::endl;
     vca.run(SNR, image);
+    //writeEndmemberSignatures("../../data/End-Cupriteb2-02.txt", bands, vd.getNumberEndmembers(), vca.getEndmembers());
     vca.clearMemory();
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
@@ -110,8 +111,14 @@ int main(int argc, char* argv[]) {
 #endif
 
     std::cout << "---------------- ISRA ----------------" << std::endl;
+    // int rows{0}, cols{0};
+    // double* endmem = loadEndmemberSignatures("../../data/End-Cupriteb2-02.txt", &rows, &cols);
+    //writeHeader("../../data/c_endmem.hdr", vd.getNumberEndmembers(), 1, bands, 5, interleave, byteOrder, waveUnit, wavelength);
+    //writeResult(vca.getEndmembers(), "../../data/c_endmem", vd.getNumberEndmembers(), 1, bands, 5, interleave);
+    
     isra.run(maxIter, image, vca.getEndmembers());
     isra.clearMemory();
+    // delete[] endmem;
     std::cout << "-------------------------------------" << std::endl << std::endl;
 
     end = std::chrono::high_resolution_clock::now();
@@ -120,8 +127,9 @@ int main(int argc, char* argv[]) {
 
     filename = argv[1];
     filename += "_processed.hdr";
+    const int outType{5};
     std::cout << "Writing results on: " << filename << std::endl;
-    error = writeHeader(filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave, byteOrder, waveUnit, wavelength);
+    error = writeHeader(filename, lines, samples, vd.getNumberEndmembers(), outType, interleave, byteOrder, waveUnit, wavelength);
     if (error != 0) {
         std::cerr << "Error writing endmembers header file on: " << filename << std::endl;
         return error;
@@ -129,7 +137,7 @@ int main(int argc, char* argv[]) {
 
     filename = argv[1];
     filename += "_processed";
-    error = writeResult(isra.getAbundanceMatrix(), filename, samples, lines, vd.getNumberEndmembers(), dataType, interleave);
+    error = writeResult(isra.getAbundanceMatrix(), filename, lines, samples, vd.getNumberEndmembers(), outType, interleave);
     writeEndmemberSignatures("End-Cupriteb-c-02.txt", bands, vd.getNumberEndmembers(), vca.getEndmembers());
     if (error != 0) {
         std::cerr << "Error writing endmembers file on: " << filename << std::endl;

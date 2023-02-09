@@ -47,7 +47,7 @@ SequentialVCA::SequentialVCA(int _lines, int _samples, int _bands, unsigned int 
     pinv_work = new double[pinv_lwork]();
 
     lwork = -1;
-    LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, &work_query, lwork);
+    LAPACKE_dgesvd_work(LAPACK_ROW_MAJOR, 'S', 'N', bands, bands, svdMat, bands, D, U, bands, VT, bands, &work_query, lwork);
     lwork = (int)work_query;
     work = new double[lwork]();
 }
@@ -112,13 +112,16 @@ void SequentialVCA::run(float SNR, const double* image) {
             meanImage[i * N + j] = image[i * N + j] - mean[i];
     }
 
+    // svdMat[bands, bands] = meanImg[bands, N] * transpose(meanImg[bands, N])
     cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
 
     for (int i = 0; i < bands * bands; i++)
         svdMat[i] /= N;
 
-    LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, VT, bands, meanImage, N, beta, x_p, targetEndmembers);
+    LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
+    
+    // x_p[target, N] = transpose(U[bands, bands]) * meanImg[bands, N]
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, U, bands, meanImage, N, beta, x_p, targetEndmembers);
 
     for (int i = 0; i < bands * N; i++) {
         sum1 += image[i] * image[i];
@@ -136,7 +139,7 @@ void SequentialVCA::run(float SNR, const double* image) {
 
 #if defined(DEBUG)
     std::cout << "SNR    = " << SNR << std::endl
-        << "SNR_th = " << SNR_th << std::endl;
+              << "SNR_th = " << SNR_th << std::endl;
 #endif
 
     /***************
@@ -144,11 +147,11 @@ void SequentialVCA::run(float SNR, const double* image) {
      ***************/
     if (SNR < SNR_th) {
 #if defined(DEBUG)
-        std::cout << "Select the projective proj." << std::endl;
+        std::cout << "Select proj. to p-1" << std::endl;
 #endif
         for (size_t i = 0; i < bands; i++)
             for (size_t j = targetEndmembers-1; j < bands; j++)
-                VT[i*targetEndmembers + j] = 0;
+                U[i*bands + j] = 0;
 
         sum1 = std::numeric_limits<double>::lowest();
         for (int i = 0; i < targetEndmembers; i++) {
@@ -163,7 +166,8 @@ void SequentialVCA::run(float SNR, const double* image) {
         }
         sum1 = std::sqrt(sum1);
 
-        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, VT, bands, x_p, targetEndmembers, beta, Rp, bands);
+        // Rp[bands, N] = U[bands, bands] * x_p[target, N]
+        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
 
         for (int i = 0; i < bands; i++)
             for (int j = 0; j < N; j++)
@@ -175,16 +179,21 @@ void SequentialVCA::run(float SNR, const double* image) {
     }
     else {
 #if defined(DEBUG)
-        std::cout << "Select proj. to p-1" << std::endl;
+        std::cout << "Select the projective proj." << std::endl;
 #endif
+        // svdMat[bands, bands] = image[bands, N] * traspose(image[bands, N])
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
 
         for (int i = 0; i < bands * bands; i++)
             svdMat[i] /= N;
 
-        LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'S', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
-        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, VT, bands, image, N, beta, x_p, targetEndmembers);
-        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, VT, bands, x_p, targetEndmembers, beta, Rp, bands);
+        LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
+        
+        // x_p[target, N] = traspose(U[bands, bands]) * image[bands, N]
+        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, U, bands, image, N, beta, x_p, targetEndmembers);
+        
+        // Rp[bands, N] = U[bands, bands] * x_p[target, N]
+        cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
 
         for (int i = 0; i < targetEndmembers; i++) {
             for (int j = 0; j < N; j++)
@@ -218,7 +227,10 @@ void SequentialVCA::run(float SNR, const double* image) {
         std::copy(A, A + targetEndmembers * targetEndmembers, A_copy);
         pinv(A_copy, targetEndmembers, pinvA, pinvS, pinvU, pinvVT, pinv_work, pinv_lwork);
 
+        //aux[target, target] = A[target, target] * pinvA[target, target]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, targetEndmembers, targetEndmembers, alpha, A, targetEndmembers, pinvA, targetEndmembers, beta, aux, targetEndmembers);
+        
+        //f[target, 1] = aux[target, target] * w[target, 1]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, 1, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);
 
         sum1 = 0;
@@ -230,6 +242,7 @@ void SequentialVCA::run(float SNR, const double* image) {
         for (int j = 0; j < targetEndmembers; j++)
             f[j] /= sum1;
 
+        // sumxu[1, N] = f[1, target] * y[target, N]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, 1, N, targetEndmembers, alpha, f, 1, y, N, beta, sumxu, 1);
 
         sum2 = 0;
