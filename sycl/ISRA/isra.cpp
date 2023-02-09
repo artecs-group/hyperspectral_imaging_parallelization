@@ -48,6 +48,16 @@ void SYCL_ISRA::clearMemory() {
 }
 
 
+void SYCL_ISRA::preProcessAbundance(const double* image, double* Ab, const double* e, int targetEndmembers, int lines, int samples, int bands) {
+
+}
+
+
+void SYCL_ISRA::invTR(double* A, int p) {
+
+}
+
+
 void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tIsra{0.f};
