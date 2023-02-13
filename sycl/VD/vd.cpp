@@ -80,6 +80,7 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
     const unsigned int N{lines*samples};
+    const double inv_N{1 / static_cast<double>(N)};
     const double alpha{(double) 1/N}, beta{0};
 
     double* CovEigVal    = this->CovEigVal;
@@ -99,12 +100,11 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     _queue.memcpy(meanImage, h_image, sizeof(double)*lines*samples*bands);
     _queue.wait();
 
-    _queue.parallel_for<class vd_10>(sycl::range(bands), [=](auto i) {
-        #pragma code_align 32
-        for(int j = 0; j < N; j++)
-            mean[i] += meanImage[(i*N) + j];
-        mean[i] /= N;
-    }).wait();
+	for (size_t i = 0; i < bands; i++)
+		oneapi::mkl::blas::column_major::asum(_queue, N, &meanImage[i*N], 1, &mean[i]);
+	_queue.wait();
+
+	oneapi::mkl::blas::column_major::scal(_queue, bands, inv_N, mean, 1).wait();
 
     _queue.parallel_for<class vd_15>(sycl::range(bands, N), [=](auto index) {
 		auto i = index[0];
@@ -127,19 +127,18 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
     _queue.wait();
 
     // Estimation
-    _queue.single_task<class vd_30>([=]() {
+    const double k = 2 / static_cast<double>(samples) / static_cast<double>(lines);
+    _queue.parallel_for<class vd_30>(sycl::range<1>(bands), [=](auto i) {
         double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
-        
-        for(int i = 0; i < bands; i++) {
-            sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * 2 / samples / lines;
-            sigmaTest = sycl::sqrt(sigmaSquareTest);
 
-            for(int j = 1; j <= FPS; j++) {
-                TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
+        sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * k;
+        sigmaTest = sycl::sqrt(sigmaSquareTest);
 
-                if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)
-                    count[j-1]++;
-            }
+        for(int j = 1; j <= FPS; j++) {
+            TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
+
+            if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)
+                count[j-1]++;
         }
     }).wait();
 

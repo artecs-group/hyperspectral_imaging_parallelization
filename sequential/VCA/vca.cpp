@@ -230,7 +230,9 @@ void SequentialVCA::run(float SNR, const double* image) {
         //mkl_domatadd('C', 'N', 'N', 1, targetEndmembers, 1.0f, w, 1, -1.0f, f, 1, f, 1);
         sum1 = cblas_ddot(targetEndmembers, f, 1, f, 1);
         sum1 = std::sqrt(sum1);
-        cblas_dscal(targetEndmembers, sum1, f, 1);
+
+        for(int j{0}; j < targetEndmembers; j++)
+            f[j] /= sum1;
 
         // sumxu[1, N] = f[1, target] * y[target, N]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, 1, N, targetEndmembers, alpha, f, 1, y, N, beta, sumxu, 1);

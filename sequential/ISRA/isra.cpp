@@ -17,6 +17,9 @@ SequentialISRA::SequentialISRA(int _lines, int _samples, int _bands, unsigned in
     numerator = new double[lines * samples * targetEndmembers]();
     aux = new double[targetEndmembers * targetEndmembers]();
     denominator = new double[lines * samples * targetEndmembers]();
+    Et_E = new double[targetEndmembers*targetEndmembers];
+    comput = new double[targetEndmembers*bands];
+    ipiv = new lapack_int[targetEndmembers];
 }
 
 
@@ -29,39 +32,35 @@ void SequentialISRA::clearMemory() {
     if (numerator != nullptr) { delete[] numerator; numerator = nullptr; }
     if (denominator != nullptr) { delete[] denominator; denominator = nullptr; }
     if (aux != nullptr) { delete[] aux; aux = nullptr; }
+    if (Et_E != nullptr) { delete[] Et_E; Et_E = nullptr; }
+    if (comput != nullptr) { delete[] comput; comput = nullptr; }
+    if (ipiv != nullptr) { delete[] ipiv; ipiv = nullptr; }
 }
 
 
 void SequentialISRA::preProcessAbundance(const double* image, double* Ab,  const double* e, int targetEndmembers, int lines, int samples, int bands) {
 	double alpha{1.0}, beta{0.0};
-	double* Et_E = new double[targetEndmembers*targetEndmembers];
 
     // Et_E[target * target] = e[bands * target] * e[bands * target]
 	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, targetEndmembers, bands, alpha, e, targetEndmembers, e, targetEndmembers, beta, Et_E, targetEndmembers);
 	invTR(Et_E, targetEndmembers);
 
-	double* COMPUT = new double[targetEndmembers*bands];
-    //COMPUT[target * bands] = Et_E[target * target] * e[bands * target]
-	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, bands, targetEndmembers, alpha, Et_E, targetEndmembers, e, targetEndmembers, beta, COMPUT, targetEndmembers);
+    //comput[target * bands] = Et_E[target * target] * e[bands * target]
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, bands, targetEndmembers, alpha, Et_E, targetEndmembers, e, targetEndmembers, beta, comput, targetEndmembers);
 
-    // Ab[N * target] = image[bands * N] * COMPUT[target * bands]
+    // Ab[N * target] = image[bands * N] * comput[target * bands]
 	const int N = lines*samples;
-	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, image, N, COMPUT, targetEndmembers, beta, Ab, N);
+	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, image, N, comput, targetEndmembers, beta, Ab, N);
 	
     // remove negatives
 	for (int i = 0; i < N*targetEndmembers; i++)
         Ab[i] = (Ab[i] < 0.0) ? 0.00001 : Ab[i];
-    
-    delete[] Et_E;
-    delete[] COMPUT;
 }
 
 
 void SequentialISRA::invTR(double* A, int targetEndmembers) {
-    lapack_int* ipiv = new lapack_int[targetEndmembers];
     LAPACKE_dgetrf(LAPACK_COL_MAJOR, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv);
     LAPACKE_dgetri(LAPACK_COL_MAJOR, targetEndmembers, A, targetEndmembers, ipiv);
-    delete[] ipiv;
 }
 
 

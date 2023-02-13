@@ -18,7 +18,6 @@ class SYCL_VCA: I_VCA {
         void clearMemory();
     private:
         sycl::queue _queue;
-        float* dSNR{nullptr};
         int64_t scrach_size, pinv_size;
         int64_t* imax{nullptr}; 
         double *gesvd_scratchpad{nullptr}, 
@@ -47,7 +46,7 @@ inline int pinv(sycl::queue q, double* A, int n, double* S, double* U, double* V
 
     // Vt = Vt * S^-1
     for (int i = 0; i < n; i++) 
-        oneapi::mkl::blas::column_major::scal(q, n, S[i], VT + i * n, 1);
+        oneapi::mkl::blas::column_major::scal(q, n, S[i], &VT[i*n], 1);
     q.wait();
 
     // pinv(A) = (Vt)t * Ut

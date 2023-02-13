@@ -3,6 +3,7 @@
 #include <chrono>
 #include <numeric>
 #include <algorithm>
+#include <vector>
 #include <CL/sycl.hpp>
 #include "oneapi/mkl.hpp"
 
@@ -24,6 +25,16 @@ SYCL_ISRA::SYCL_ISRA(int _lines, int _samples, int _bands, unsigned int _targetE
     denominator     = sycl::malloc_device<double>(targetEndmembers* lines * samples, _queue);
     image           = sycl::malloc_device<double>(bands * lines * samples, _queue);
     endmembers      = sycl::malloc_device<double>(targetEndmembers * bands, _queue);
+    Et_E            = sycl::malloc_device<double>(targetEndmembers*targetEndmembers, _queue);
+    comput          = sycl::malloc_device<double>(targetEndmembers*bands, _queue);
+    ipiv            = sycl::malloc_device<int64_t>(targetEndmembers, _queue);
+
+    getr_size       = oneapi::mkl::lapack::getrf_scratchpad_size<double>(
+					_queue,
+                    targetEndmembers, targetEndmembers, targetEndmembers);
+    _queue.wait();
+	getr_scratchpad = sycl::malloc_device<double>(getr_size, _queue);
+    _queue.wait();
 }
 
 
@@ -45,16 +56,40 @@ void SYCL_ISRA::clearMemory() {
     if(aux != nullptr) {sycl::free(aux, _queue); aux = nullptr; }
     if(image != nullptr) {sycl::free(image, _queue); image = nullptr; }
     if(endmembers != nullptr) {sycl::free(endmembers, _queue); endmembers = nullptr; }
+    if (Et_E != nullptr) { sycl::free(Et_E, _queue); Et_E = nullptr; }
+    if (comput != nullptr) { sycl::free(comput, _queue); comput = nullptr; }
+    // if (getr_scratchpad != nullptr) { sycl::free(getr_scratchpad, _queue); getr_scratchpad = nullptr; }
+    // if (ipiv != nullptr) { sycl::free(ipiv, _queue); ipiv = nullptr; }
 }
 
 
 void SYCL_ISRA::preProcessAbundance(const double* image, double* Ab, const double* e, int targetEndmembers, int lines, int samples, int bands) {
+	double alpha{1.0}, beta{0.0};
 
+    // Et_E[target * target] = e[bands * target] * e[bands * target]
+    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, targetEndmembers, targetEndmembers, bands, alpha, e, targetEndmembers, e, targetEndmembers, beta, Et_E, targetEndmembers);
+    _queue.wait();
+	invTR(Et_E, targetEndmembers);
+
+    //comput[target * bands] = Et_E[target * target] * e[bands * target]
+    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, bands, targetEndmembers, alpha, Et_E, targetEndmembers, e, targetEndmembers, beta, comput, targetEndmembers);
+	_queue.wait();
+
+    // Ab[N * target] = image[bands * N] * comput[target * bands]
+	const int N = lines*samples;
+    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, image, N, comput, targetEndmembers, beta, Ab, N);
+	_queue.wait();
+
+    // remove negatives
+    _queue.parallel_for<class isra_10>(cl::sycl::range<1> (N * targetEndmembers), [=] (auto i){
+        Ab[i] = (Ab[i] < 0.0) ? 0.00001 : Ab[i];
+    }).wait();
 }
 
 
 void SYCL_ISRA::invTR(double* A, int p) {
-
+    oneapi::mkl::lapack::getrf(_queue, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv, getr_scratchpad, getr_size).wait();
+    oneapi::mkl::lapack::getri(_queue, targetEndmembers, A, targetEndmembers, ipiv, getr_scratchpad, getr_size).wait();
 }
 
 
@@ -75,17 +110,16 @@ void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers
     _queue.memset(abundanceMatrix, 1, sizeof(abundanceMatrix) * N*targetEndmembers);
     _queue.wait();
     
+    preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
     oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, image, N, endmembers, targetEndmembers, beta, numerator, N);
+    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, targetEndmembers, targetEndmembers, bands, alpha, endmembers, targetEndmembers, endmembers, targetEndmembers, beta, aux, targetEndmembers);
     _queue.wait();
 
     for(int i = 0; i < maxIter; i++) {
-        oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, N, bands, targetEndmembers, alpha, abundanceMatrix, N, endmembers, targetEndmembers, beta, aux, N);
+        oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, targetEndmembers, alpha, abundanceMatrix, N, aux, targetEndmembers, beta, denominator, N);
         _queue.wait();
 
-        oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, aux, N, endmembers, targetEndmembers, beta, denominator, N);
-        _queue.wait();
-
-        _queue.parallel_for<class isra_10>(cl::sycl::range<1> (N * targetEndmembers), [=] (auto j){
+        _queue.parallel_for<class isra_20>(cl::sycl::range<1> (N * targetEndmembers), [=] (auto j){
             abundanceMatrix[j] = abundanceMatrix[j] * (numerator[j] / denominator[j]);
         }).wait();
     }

@@ -16,8 +16,10 @@ class SYCL_ISRA: I_ISRA {
         void invTR(double* A, int p);
     private:
         sycl::queue _queue;
+        int64_t getr_size;
         double *image{nullptr}, 
-               *endmembers{nullptr};
+               *endmembers{nullptr},
+               *getr_scratchpad{nullptr};
 };
 
 #endif

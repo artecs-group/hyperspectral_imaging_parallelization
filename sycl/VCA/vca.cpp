@@ -40,8 +40,7 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 	pinvS	   = sycl::malloc_shared<double>(targetEndmembers, _queue);
 	pinvU	   = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
 	pinvVT	   = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
-	dSNR	   = sycl::malloc_shared<float>(1, _queue);
-	redVars    = sycl::malloc_device<double>(3, _queue);
+	redVars    = sycl::malloc_shared<double>(3, _queue);
 	imax       = sycl::malloc_device<int64_t>(1, _queue);
 
     scrach_size = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(
@@ -112,7 +111,6 @@ void SYCL_VCA::clearMemory() {
 	if(pinvS != nullptr) {sycl::free(pinvS, _queue); pinvS = nullptr;}
 	if(pinvU != nullptr) {sycl::free(pinvU, _queue); pinvU = nullptr;}
 	if(pinvVT != nullptr) {sycl::free(pinvVT, _queue); pinvVT = nullptr;}
-	if(dSNR != nullptr) {sycl::free(dSNR, _queue); dSNR = nullptr;}
 	if(redVars != nullptr) {sycl::free(redVars, _queue); redVars = nullptr;}
 	if(imax != nullptr) {sycl::free(imax, _queue); imax = nullptr;}
 }
@@ -122,13 +120,14 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
     unsigned int N{lines*samples};
-	double alpha{1.0f}, beta{0.f};
+	double inv_N{1/static_cast<double>(N)};
+	double alpha{1.0f}, beta{0.f}, powerx{0}, powery{0};
     const double SNR_th{15 + 10 * std::log10(targetEndmembers)};
+	const size_t max_wgs = _queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
 
 	std::uint64_t seed{0};
 	oneapi::mkl::rng::mrg32k3a engine(_queue, seed);
 	oneapi::mkl::rng::gaussian<double, oneapi::mkl::rng::gaussian_method::box_muller2> distr(0.0, 1.0);
-
 
     double* Ud = this->Ud;
 	double* x_p = this->x_p;
@@ -152,7 +151,6 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	double* pinvS = this->pinvS;
 	double* pinvU = this->pinvU;
 	double* pinvVT = this->pinvVT;
-	float* dSNR = this->dSNR;
 	double* redVars = this->redVars;
 	unsigned int lines = this->lines;
 	unsigned int samples = this->samples;
@@ -166,14 +164,13 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	 * SNR estimation
 	 ***********/
     _queue.memcpy(dImage, image, sizeof(double)*lines*samples*bands);
-	_queue.memcpy(dSNR, &SNR, sizeof(float));
     _queue.wait();
 
-    _queue.parallel_for<class vca_10>(sycl::range(bands), [=](auto i) {
-		for(int j = 0; j < N; j++)
-			mean[i] += dImage[i*N + j];
-		mean[i] /= N;
-    }).wait();
+	for (size_t i = 0; i < bands; i++)
+		oneapi::mkl::blas::column_major::asum(_queue, N, &dImage[i*N], 1, &mean[i]);
+	_queue.wait();
+
+	oneapi::mkl::blas::column_major::scal(_queue, bands, inv_N, mean, 1).wait();
 
     _queue.parallel_for<class vca_15>(sycl::range(bands, N), [=](auto index) {
 		auto i = index[0];
@@ -184,14 +181,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
 	_queue.wait();
 
-	const size_t max_wgs = _queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
-	size_t wgs = (bands*bands < max_wgs) ? bands*bands : max_wgs;
-	size_t blocks = bands*bands / wgs + (bands*bands % wgs == 0 ? 0 : 1);
-	_queue.parallel_for<class vca_20>(sycl::nd_range<1>{blocks*wgs, wgs}, [=](sycl::nd_item<1> it) {
-		auto i = it.get_global_id(0);
-		if(i < bands*bands)
-			svdMat[i] /= N;
-	}).wait();
+	oneapi::mkl::blas::column_major::scal(_queue, bands*bands, inv_N, svdMat, 1).wait();
 
 	oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::novec, bands, bands, svdMat, bands, D, U, bands, VT, bands, gesvd_scratchpad, scrach_size);
 	_queue.wait();
@@ -204,26 +194,20 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	oneapi::mkl::blas::column_major::dot(_queue, bands, mean, 1, mean, 1, &redVars[2]);
 	_queue.wait();
 
-    _queue.single_task<class vca_40>([=]() {
-		double powerx{0}, powery{0};
-
-		powery = redVars[0] / N; 
-		powerx = redVars[1] / N + redVars[2];
-		dSNR[0] = (dSNR[0] < 0) ? 
-					10 * cl::sycl::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) :
-					dSNR[0];
-    }).wait();
+	powery = redVars[0] / N; 
+	powerx = redVars[1] / N + redVars[2];
+	SNR = (SNR < 0) ? 10 * cl::sycl::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) : SNR;
 	/**********************/
 
 #if defined(DEBUG)
-		std::cout << "SNR    = " << dSNR[0] << std::endl 
+		std::cout << "SNR    = " << SNR << std::endl 
 				  << "SNR_th = " << SNR_th << std::endl;
 #endif
 
 /***************
  * Choosing Projective Projection or projection to p-1 subspace
  ***************/
-	if(dSNR[0] < SNR_th) {
+	if(SNR < SNR_th) {
 #if defined(DEBUG)
 		std::cout << "Select proj. to p-1"<< std::endl;
 #endif
@@ -233,26 +217,25 @@ void SYCL_VCA::run(float SNR, const double* image) {
 			U[i*bands + j] = 0;
 		});
 
-		_queue.parallel_for<class vca_55>(cl::sycl::range<1>(N), [=](auto index) {
-			int j = index[0];
+		_queue.parallel_for<class vca_55>(cl::sycl::range<1>(N), [=](auto j) {
 			x_p[(targetEndmembers-1)*N + j] = 0;
 		});
 		_queue.wait();
 
-		for(int i{0}; i < targetEndmembers; i++)
-			oneapi::mkl::blas::column_major::dot(_queue, N, &x_p[i*N], 1, &x_p[i*N], 1, &u[i]);
-		_queue.wait();
-
-		oneapi::mkl::blas::column_major::iamax(_queue, targetEndmembers, u, 1, &imax[0]);
-		_queue.wait();
-
-		_queue.single_task<class vca_57>([=]() {
-			redVars[0] = u[imax[0]];
+		// for(int i{0}; i < targetEndmembers; i++)
+		// 	oneapi::mkl::blas::column_major::dot(_queue, N, &x_p[i*N], 1, &x_p[i*N], 1, &u[i]);
+		// _queue.wait();
+		_queue.parallel_for<class vca_57>(cl::sycl::range<1>(targetEndmembers), [=](auto index) {
+			int i = index[0];
+			for(int j{0}; j < N; j++)
+				u[i] += x_p[i * N + j] * x_p[i * N + j];
 		}).wait();
+
+		oneapi::mkl::blas::column_major::iamax(_queue, targetEndmembers, u, 1, &imax[0]).wait();
 
 		_queue.single_task<class vca_60>([=]() {
-			redVars[0] = cl::sycl::sqrt(redVars[0]);
-		}).wait();
+			redVars[0] = cl::sycl::sqrt(u[imax[0]]);
+		});
 
 		oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
 		_queue.wait();
@@ -262,14 +245,15 @@ void SYCL_VCA::run(float SNR, const double* image) {
 				Rp[i*N + j] += mean[i];
 		});
 
-		_queue.parallel_for<class vca_80>(cl::sycl::range<2>(targetEndmembers, N), [=](auto index) {
+		_queue.parallel_for<class vca_80>(cl::sycl::range<2>(targetEndmembers-1, N), [=](auto index) {
 			int i = index[0];
 			int j = index[1];
+			y[i*N + j] = x_p[i*N + j];
+		});
 
-			if(i < targetEndmembers-1) 
-				y[i*N + j] = x_p[i*N + j];
-			else 
-				y[i*N + j] = redVars[0];
+		_queue.parallel_for<class vca_85>(cl::sycl::range<1>(N), [=](auto index) {
+			int j = index[0];
+			y[(targetEndmembers-1) * N + j] = redVars[0];
 		});
 		_queue.wait();
 	}
@@ -281,13 +265,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, bands, N, alpha, dImage, N, dImage, N, beta, svdMat, bands);
 		_queue.wait();
 
-		wgs = (bands*bands < max_wgs) ? bands*bands : max_wgs;
-		blocks = (bands*bands + wgs - 1) / wgs;
-		_queue.parallel_for<class vca_90>(sycl::nd_range<1>{blocks*wgs, wgs}, [=](sycl::nd_item<1> it) {
-			auto i = it.get_global_id(0);
-			if(i < bands*bands)
-				svdMat[i] /= N;
-    	}).wait();
+		oneapi::mkl::blas::column_major::scal(_queue, bands*bands, inv_N, svdMat, 1).wait();
 
 		oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::novec, bands, bands, svdMat, bands, D, U, bands, VT, bands, gesvd_scratchpad, scrach_size);
 		_queue.wait();
@@ -298,35 +276,25 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		oneapi::mkl::blas::column_major::gemm(_queue, trans, nontrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
 		_queue.wait();
 
-		_queue.parallel_for<class vca_110>(cl::sycl::range(targetEndmembers), [=](auto i) {
+		for (size_t i = 0; i < targetEndmembers; i++)
+			oneapi::mkl::blas::column_major::asum(_queue, N, &x_p[i*N], 1, &u[i]);
+		_queue.wait();
+
+		oneapi::mkl::blas::column_major::scal(_queue, targetEndmembers, inv_N, u, 1).wait();
+
+		_queue.parallel_for<class vca_115>(cl::sycl::range<1>(targetEndmembers), [=](auto i) {
 			for(int j = 0; j < N; j++)
-				u[i] += x_p[i*N + j];
-			u[i] /= N;
+				y[i*N + j] = x_p[i*N + j] * u[i];
 		}).wait();
 
-		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
-		blocks = (targetEndmembers + wgs - 1) / wgs;
-		_queue.parallel_for<class vca_115>(sycl::nd_range<1>{blocks*wgs, wgs}, [=](sycl::nd_item<1> it) {
-			size_t i = it.get_global_id(0);
-			if(i < targetEndmembers) {
-				for(int j = 0; j < N; j++)
-					y[i*N + j] = x_p[i*N + j] * u[i];
-			}
-		}).wait();
-
-		_queue.parallel_for<class vca_120>(cl::sycl::range(N), [=](auto i) {
-			for(int j = 0; j < targetEndmembers; j++)
+		_queue.parallel_for<class vca_120>(cl::sycl::range<1>(targetEndmembers), [=](auto j) {
+			for(int i = 0; i < N; i++)
 				sumxu[i] += y[j*N + i];
 		}).wait();
 
-		wgs = (targetEndmembers < max_wgs) ? targetEndmembers : max_wgs;
-		blocks = (targetEndmembers + wgs - 1) / wgs;
-		_queue.parallel_for<class vca_130>(sycl::nd_range<1>{blocks*wgs, wgs}, [=](sycl::nd_item<1> it) {
-			size_t i = it.get_global_id(0);
-			if(i < targetEndmembers) {
-				for(int j = 0; j < N; j++)
-					y[i*N + j] /= sumxu[j];
-			}
+		_queue.parallel_for<class vca_130>(cl::sycl::range<1>(targetEndmembers), [=](auto i) {
+			for(int j = 0; j < N; j++)
+				y[i*N + j] /= sumxu[j];
 		}).wait();
 	}
 	/******************/
@@ -348,19 +316,11 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, 1, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);
 		_queue.wait();
 
-		_queue.parallel_for<class vca_163>(cl::sycl::range{targetEndmembers}, [=](auto j) {
-			f[j] = w[j] - f[j];
-		}).wait();
-
-		oneapi::mkl::blas::column_major::dot(_queue, targetEndmembers, f, 1, f, 1, &redVars[0]);
-		_queue.wait();
-
-		_queue.single_task<class vca_167>([=]() {
-			redVars[0] = cl::sycl::sqrt(redVars[0]);
-		}).wait();
+		oneapi::mkl::blas::axpy(_queue, targetEndmembers, -1.0f, w, 1, f, 1).wait();
+		oneapi::mkl::blas::column_major::dot(_queue, targetEndmembers, f, 1, f, 1, &redVars[0]).wait();
 
 		_queue.parallel_for<class vca_170>(cl::sycl::range{targetEndmembers}, [=](auto j) {
-			f[j] /= redVars[0];
+			f[j] /= cl::sycl::sqrt(redVars[0]);
 		}).wait();
 
 		oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, 1, N, targetEndmembers, alpha, f, 1, y, N, beta, sumxu, 1);
@@ -375,11 +335,12 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 		_queue.parallel_for<class vca_190>(cl::sycl::range(targetEndmembers), [=](auto j) {
 			A[j*targetEndmembers + i] = y[j*N + imax[0]];
-		}).wait();
+		});
 
 		_queue.parallel_for<class vca_200>(cl::sycl::range(bands), [=](auto j) {
 			endmembers[j*targetEndmembers + i] = Rp[j * N + imax[0]];
-		}).wait();
+		});
+		_queue.wait();
 	}
 	/******************/
 

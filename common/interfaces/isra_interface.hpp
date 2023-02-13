@@ -13,6 +13,9 @@ class I_ISRA {
         double *abundanceMatrix{nullptr}, 
                *numerator{nullptr}, 
                *denominator{nullptr}, 
-               *aux{nullptr};
+               *aux{nullptr},
+               *Et_E{nullptr},
+               *comput{nullptr};
+        int64_t* ipiv{nullptr};
 };
 #endif
