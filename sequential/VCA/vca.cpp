@@ -88,6 +88,8 @@ void SequentialVCA::run(float SNR, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
     const unsigned int N{lines * samples};
+    const double inv_N{1/static_cast<double>(N)};
+    int imax{0};
     double sum1{0}, sum2{0}, powery, powerx, mult{0}, alpha{1.0f}, beta{0.f};
     double SNR_th{15 + 10 * std::log10(targetEndmembers)};
 
@@ -99,12 +101,12 @@ void SequentialVCA::run(float SNR, const double* image) {
     /***********
      * SNR estimation
      ***********/
+    for (size_t i = 0; i < bands; i++)
+        mean[i] = cblas_dasum(N, &image[i*N], 1);
+    
+    cblas_dscal(bands, inv_N, mean, 1);
+
     for (int i = 0; i < bands; i++) {
-        for (int j = 0; j < N; j++)
-            mean[i] += image[i * N + j];
-
-        mean[i] /= N;
-
         for (int j = 0; j < N; j++)
             meanImage[i * N + j] = image[i * N + j] - mean[i];
     }
@@ -112,21 +114,16 @@ void SequentialVCA::run(float SNR, const double* image) {
     // svdMat[bands, bands] = meanImg[bands, N] * transpose(meanImg[bands, N])
     cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, svdMat, bands);
 
-    for (int i = 0; i < bands * bands; i++)
-        svdMat[i] /= N;
+    cblas_dscal(bands*bands, inv_N, svdMat, 1);
 
     LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
     
     // x_p[target, N] = transpose(U[bands, bands]) * meanImg[bands, N]
     cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, N, bands, alpha, U, bands, meanImage, N, beta, x_p, targetEndmembers);
 
-    for (int i = 0; i < bands * N; i++) {
-        sum1 += image[i] * image[i];
-        if (i < targetEndmembers * N)
-            sum2 += x_p[i] * x_p[i];
-        if (i < bands)
-            mult += mean[i] * mean[i];
-    }
+	sum1 = cblas_ddot(bands*N, image, 1, image, 1);
+	sum2 = cblas_ddot(N*targetEndmembers, x_p, 1, x_p, 1);
+	mult = cblas_ddot(bands, mean, 1, mean, 1);
 
     powery = sum1 / N;
     powerx = sum2 / N + mult;
@@ -150,18 +147,19 @@ void SequentialVCA::run(float SNR, const double* image) {
             for (size_t j = targetEndmembers-1; j < bands; j++)
                 U[i*bands + j] = 0;
 
-        sum1 = std::numeric_limits<double>::lowest();
+        for (int j = 0; j < N; j++)
+            x_p[(targetEndmembers-1) * N + j] = 0;
+
+        // for(int i{0}; i < targetEndmembers; i++)
+        //     u[i] = cblas_ddot(N, &x_p[i*N], 1, &x_p[i*N], 1);
+
         for (int i = 0; i < targetEndmembers; i++) {
             for (int j = 0; j < N; j++) {
-                if (i == targetEndmembers - 1)
-                    x_p[i * N + j] = 0;
                 u[i] += x_p[i * N + j] * x_p[i * N + j];
             }
-
-            if (sum1 < u[i])
-                sum1 = u[i];
         }
-        sum1 = std::sqrt(sum1);
+        imax = cblas_idamax(targetEndmembers, u, 1);
+        sum1 = std::sqrt(u[imax]);
 
         // Rp[bands, N] = U[bands, bands] * x_p[target, N]
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
@@ -180,9 +178,7 @@ void SequentialVCA::run(float SNR, const double* image) {
 #endif
         // svdMat[bands, bands] = image[bands, N] * traspose(image[bands, N])
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, image, N, image, N, beta, svdMat, bands);
-
-        for (int i = 0; i < bands * bands; i++)
-            svdMat[i] /= N;
+        cblas_dscal(bands*bands, inv_N, svdMat, 1);
 
         LAPACKE_dgesvd_work(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, svdMat, bands, D, U, bands, VT, bands, work, lwork);
         
@@ -192,12 +188,12 @@ void SequentialVCA::run(float SNR, const double* image) {
         // Rp[bands, N] = U[bands, bands] * x_p[target, N]
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
 
+        for (size_t i = 0; i < targetEndmembers; i++)
+            u[i] = cblas_dasum(N, &x_p[i*N], 1);
+        
+        cblas_dscal(targetEndmembers, inv_N, u, 1);
+
         for (int i = 0; i < targetEndmembers; i++) {
-            for (int j = 0; j < N; j++)
-                u[i] += x_p[i * N + j];
-
-            u[i] /= N;
-
             for (int j = 0; j < N; j++)
                 y[i * N + j] = x_p[i * N + j] * u[i];
         }
@@ -230,26 +226,20 @@ void SequentialVCA::run(float SNR, const double* image) {
         //f[target, 1] = aux[target, target] * w[target, 1]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, targetEndmembers, 1, targetEndmembers, alpha, aux, targetEndmembers, w, targetEndmembers, beta, f, targetEndmembers);
 
-        sum1 = 0;
-        for (int j = 0; j < targetEndmembers; j++) {
-            f[j] = w[j] - f[j];
-            sum1 += f[j] * f[j];
-        }
+        cblas_daxpy(targetEndmembers, -1.0f, w, 1, f, 1);
+        //mkl_domatadd('C', 'N', 'N', 1, targetEndmembers, 1.0f, w, 1, -1.0f, f, 1, f, 1);
+        sum1 = cblas_ddot(targetEndmembers, f, 1, f, 1);
         sum1 = std::sqrt(sum1);
-        for (int j = 0; j < targetEndmembers; j++)
-            f[j] /= sum1;
+        cblas_dscal(targetEndmembers, sum1, f, 1);
 
         // sumxu[1, N] = f[1, target] * y[target, N]
         cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, 1, N, targetEndmembers, alpha, f, 1, y, N, beta, sumxu, 1);
 
-        sum2 = 0;
-        for (int j = 0; j < N; j++) {
-            if (sum2 < std::abs(sumxu[j])) {
-                sum2 = std::abs(sumxu[j]);
-                index[i] = j;
-            }
-        }
+        for (int j = 0; j < N; j++)
+            sumxu[j] = std::abs(sumxu[j]);
 
+        index[i] = cblas_idamax(N, sumxu, 1);
+        
         for (int j = 0; j < targetEndmembers; j++)
             A[j * targetEndmembers + i] = y[j * N + index[i]];
     }

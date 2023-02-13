@@ -53,20 +53,22 @@ void SequentialVD::clearMemory() {
 void SequentialVD::run(const int approxVal, const double* image) {
     std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVd{0.f};
-    double mean{0.f}, TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
+    double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     const unsigned int N{lines * samples};
+    const double inv_N{1 / static_cast<double>(N)};
     const double alpha{(double)1 / N}, beta{0};
     double superb[bands - 1];
 
     start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < bands; i++) {
-        mean = 0.f;
-        mean = std::accumulate(image + (i * N), image + (i * N + N), 0);
-        mean /= N;
-        meanSpect[i] = mean;
 
+    for (size_t i = 0; i < bands; i++)
+        meanSpect[i] = cblas_dasum(N, &image[i*N], 1);
+    
+    cblas_dscal(bands, inv_N, meanSpect, 1);
+
+    for (int i = 0; i < bands; i++) {
         for (int j = 0; j < N; j++)
-            meanImage[i * N + j] = image[i * N + j] - mean;
+            meanImage[i * N + j] = image[i * N + j] - meanSpect[i];
     }
 
     cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
@@ -83,9 +85,10 @@ void SequentialVD::run(const int approxVal, const double* image) {
     //estimation
     std::fill(count, count + FPS, 0);
 
+    const double k = 2 / static_cast<double>(samples) / static_cast<double>(lines);
     for (int i = 0; i < bands; i++) {
-        sigmaSquareTest = (CovEigVal[i] * CovEigVal[i] + CorrEigVal[i] * CorrEigVal[i]) * 2 / samples / lines;
-        sigmaTest = sqrt(sigmaSquareTest);
+        sigmaSquareTest = (CovEigVal[i] * CovEigVal[i] + CorrEigVal[i] * CorrEigVal[i]) * k;
+        sigmaTest = std::sqrt(sigmaSquareTest);
 
         for (int j = 1; j <= FPS; j++) {
             TaoTest = M_SQRT2 * sigmaTest * estimation[j - 1];

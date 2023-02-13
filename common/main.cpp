@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
     filename = argv[1];
     filename += "_processed";
     error = writeResult(isra.getAbundanceMatrix(), filename, lines, samples, vd.getNumberEndmembers(), outType, interleave);
-    writeEndmemberSignatures("End-Cupriteb-c-02.txt", bands, vd.getNumberEndmembers(), vca.getEndmembers());
+    //writeEndmemberSignatures("../../data/End-Cupriteb_c-02.txt", bands, vd.getNumberEndmembers(), vca.getEndmembers());
     if (error != 0) {
         std::cerr << "Error writing endmembers file on: " << filename << std::endl;
         return error;
