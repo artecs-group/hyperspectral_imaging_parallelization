@@ -188,10 +188,11 @@ void SequentialVCA::run(float SNR, const double* image) {
         // Rp[bands, N] = U[bands, bands] * x_p[target, N]
         cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, N, targetEndmembers, alpha, U, bands, x_p, targetEndmembers, beta, Rp, bands);
 
-        for (size_t i = 0; i < targetEndmembers; i++)
-            u[i] = cblas_dasum(N, &x_p[i*N], 1);
-        
-        cblas_dscal(targetEndmembers, inv_N, u, 1);
+        for (size_t i = 0; i < targetEndmembers; i++) {
+            for(int j{0}; j < N; j++)
+                u[i] += x_p[i*N + j];
+            u[i] *= inv_N;
+        }
 
         for (int i = 0; i < targetEndmembers; i++) {
             for (int j = 0; j < N; j++)

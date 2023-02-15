@@ -3,4 +3,4 @@ data/*
 !data/test/
 *.out
 *02.txt
-build/
+build*/

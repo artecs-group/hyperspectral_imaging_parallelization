@@ -22,10 +22,10 @@ SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
     CorrEigVal = sycl::malloc_device<double>(bands, _queue);
     U		   = sycl::malloc_device<double>(bands*bands, _queue);
     VT	       = sycl::malloc_device<double>(bands*bands, _queue);
-    count      = sycl::malloc_shared<unsigned int>(FPS, _queue);
+    count      = sycl::malloc_device<unsigned int>(FPS, _queue);
     meanImage  = sycl::malloc_device<double>(lines*samples*bands, _queue);
     estimation = sycl::malloc_device<double>(FPS, _queue);
-    mean       = sycl::malloc_device<double>(bands, _queue);
+    mean       = sycl::malloc_shared<double>(bands, _queue); //BUG: keep it shared to avoid error of compatibility with CUDA
     _scrach_size = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(
                     _queue, 
                     oneapi::mkl::jobsvd::somevec, 
@@ -143,7 +143,7 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
         }
     }).wait();
 
-    endmembers = count[approxVal-1];
+    _queue.memcpy(&endmembers, &count[approxVal-1], sizeof(unsigned int)).wait();
     end = std::chrono::high_resolution_clock::now();
     tVd += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
     
