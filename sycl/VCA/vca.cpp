@@ -68,7 +68,7 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 	_queue.submit([&](cl::sycl::handler &h) {
 		double* A = this->A;
 		unsigned int targetEndmembers = this->targetEndmembers;
-		h.single_task<class vca_5>([=]() {
+		h.single_task<class vca_10>([=]() {
 			A[(targetEndmembers-1) * targetEndmembers] = 1;
 		});
 	});
@@ -172,7 +172,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 	oneapi::mkl::blas::column_major::scal(_queue, bands, inv_N, mean, 1).wait();
 
-    _queue.parallel_for<class vca_15>(sycl::range(bands, N), [=](auto index) {
+    _queue.parallel_for<class vca_20>(sycl::range(bands, N), [=](auto index) {
 		auto i = index[0];
 		auto j = index[1];
 		meanImage[i*N + j] = dImage[i*N + j] - mean[i];
@@ -211,13 +211,13 @@ void SYCL_VCA::run(float SNR, const double* image) {
 #if defined(DEBUG)
 		std::cout << "Select proj. to p-1"<< std::endl;
 #endif
-		_queue.parallel_for<class vca_50>(cl::sycl::range<2>(bands, bands - targetEndmembers), [=](auto index) {
+		_queue.parallel_for<class vca_30>(cl::sycl::range<2>(bands, bands - targetEndmembers), [=](auto index) {
 			int i = index[0];
 			int j = index[1] + (targetEndmembers-1);
 			U[i*bands + j] = 0;
 		});
 
-		_queue.parallel_for<class vca_55>(cl::sycl::range<1>(N), [=](auto j) {
+		_queue.parallel_for<class vca_40>(cl::sycl::range<1>(N), [=](auto j) {
 			x_p[(targetEndmembers-1)*N + j] = 0;
 		});
 		_queue.wait();
@@ -225,7 +225,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		// for(int i{0}; i < targetEndmembers; i++)
 		// 	oneapi::mkl::blas::column_major::dot(_queue, N, &x_p[i*N], 1, &x_p[i*N], 1, &u[i]);
 		// _queue.wait();
-		_queue.parallel_for<class vca_57>(cl::sycl::range<1>(targetEndmembers), [=](auto index) {
+		_queue.parallel_for<class vca_50>(cl::sycl::range<1>(targetEndmembers), [=](auto index) {
 			int i = index[0];
 			for(int j{0}; j < N; j++)
 				u[i] += x_p[i * N + j] * x_p[i * N + j];
@@ -251,7 +251,7 @@ void SYCL_VCA::run(float SNR, const double* image) {
 			y[i*N + j] = x_p[i*N + j];
 		});
 
-		_queue.parallel_for<class vca_85>(cl::sycl::range<1>(N), [=](auto index) {
+		_queue.parallel_for<class vca_90>(cl::sycl::range<1>(N), [=](auto index) {
 			int j = index[0];
 			y[(targetEndmembers-1) * N + j] = redVars[0];
 		});
@@ -282,17 +282,17 @@ void SYCL_VCA::run(float SNR, const double* image) {
 
 		oneapi::mkl::blas::column_major::scal(_queue, targetEndmembers, inv_N, u, 1).wait();
 
-		_queue.parallel_for<class vca_115>(cl::sycl::range<1>(targetEndmembers), [=](auto i) {
+		_queue.parallel_for<class vca_100>(cl::sycl::range<1>(targetEndmembers), [=](auto i) {
 			for(int j = 0; j < N; j++)
 				y[i*N + j] = x_p[i*N + j] * u[i];
 		}).wait();
 
-		_queue.parallel_for<class vca_120>(cl::sycl::range<1>(targetEndmembers), [=](auto j) {
+		_queue.parallel_for<class vca_110>(cl::sycl::range<1>(targetEndmembers), [=](auto j) {
 			for(int i = 0; i < N; i++)
 				sumxu[i] += y[j*N + i];
 		}).wait();
 
-		_queue.parallel_for<class vca_130>(cl::sycl::range<1>(targetEndmembers), [=](auto i) {
+		_queue.parallel_for<class vca_120>(cl::sycl::range<1>(targetEndmembers), [=](auto i) {
 			for(int j = 0; j < N; j++)
 				y[i*N + j] /= sumxu[j];
 		}).wait();
@@ -319,25 +319,25 @@ void SYCL_VCA::run(float SNR, const double* image) {
 		oneapi::mkl::blas::axpy(_queue, targetEndmembers, -1.0f, w, 1, f, 1).wait();
 		oneapi::mkl::blas::column_major::dot(_queue, targetEndmembers, f, 1, f, 1, &redVars[0]).wait();
 
-		_queue.parallel_for<class vca_170>(cl::sycl::range{targetEndmembers}, [=](auto j) {
+		_queue.parallel_for<class vca_130>(cl::sycl::range{targetEndmembers}, [=](auto j) {
 			f[j] /= cl::sycl::sqrt(redVars[0]);
 		}).wait();
 
 		oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, 1, N, targetEndmembers, alpha, f, 1, y, N, beta, sumxu, 1);
 		_queue.wait();
 
-		_queue.parallel_for<class vca_173>(cl::sycl::range{N}, [=](auto j) {
+		_queue.parallel_for<class vca_140>(cl::sycl::range{N}, [=](auto j) {
 			sumxu[j] = cl::sycl::abs(sumxu[j]);
 		}).wait();
 
 		oneapi::mkl::blas::column_major::iamax(_queue, N, sumxu, 1, &imax[0]);
 		_queue.wait();
 
-		_queue.parallel_for<class vca_190>(cl::sycl::range(targetEndmembers), [=](auto j) {
+		_queue.parallel_for<class vca_150>(cl::sycl::range(targetEndmembers), [=](auto j) {
 			A[j*targetEndmembers + i] = y[j*N + imax[0]];
 		});
 
-		_queue.parallel_for<class vca_200>(cl::sycl::range(bands), [=](auto j) {
+		_queue.parallel_for<class vca_160>(cl::sycl::range(bands), [=](auto j) {
 			endmembers[j*targetEndmembers + i] = Rp[j * N + imax[0]];
 		});
 		_queue.wait();

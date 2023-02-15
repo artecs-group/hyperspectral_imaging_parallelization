@@ -29,12 +29,14 @@ SYCL_ISRA::SYCL_ISRA(int _lines, int _samples, int _bands, unsigned int _targetE
     comput          = sycl::malloc_device<double>(targetEndmembers*bands, _queue);
     ipiv            = sycl::malloc_device<int64_t>(targetEndmembers, _queue);
 
-    getr_size       = oneapi::mkl::lapack::getrf_scratchpad_size<double>(
-					_queue,
+    getrf_size       = oneapi::mkl::lapack::getrf_scratchpad_size<double>(
+                    _queue,
                     targetEndmembers, targetEndmembers, targetEndmembers);
+    getri_size       = oneapi::mkl::lapack::getri_scratchpad_size<double>(_queue, targetEndmembers, targetEndmembers);
     _queue.wait();
-	getr_scratchpad = sycl::malloc_device<double>(getr_size, _queue);
-    _queue.wait();
+
+    getrf_scratchpad = sycl::malloc_device<double>(getrf_size, _queue);
+    getri_scratchpad = sycl::malloc_device<double>(getri_size, _queue);
 }
 
 
@@ -58,8 +60,9 @@ void SYCL_ISRA::clearMemory() {
     if(endmembers != nullptr) {sycl::free(endmembers, _queue); endmembers = nullptr; }
     if (Et_E != nullptr) { sycl::free(Et_E, _queue); Et_E = nullptr; }
     if (comput != nullptr) { sycl::free(comput, _queue); comput = nullptr; }
-    // if (getr_scratchpad != nullptr) { sycl::free(getr_scratchpad, _queue); getr_scratchpad = nullptr; }
-    // if (ipiv != nullptr) { sycl::free(ipiv, _queue); ipiv = nullptr; }
+    if (getrf_scratchpad != nullptr) { sycl::free(getrf_scratchpad, _queue); getrf_scratchpad = nullptr; }
+    if (getri_scratchpad != nullptr) { sycl::free(getri_scratchpad, _queue); getri_scratchpad = nullptr; }
+    if (ipiv != nullptr) { sycl::free(ipiv, _queue); ipiv = nullptr; }
 }
 
 
@@ -88,8 +91,8 @@ void SYCL_ISRA::preProcessAbundance(const double* image, double* Ab, const doubl
 
 
 void SYCL_ISRA::invTR(double* A, int p) {
-    oneapi::mkl::lapack::getrf(_queue, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv, getr_scratchpad, getr_size).wait();
-    oneapi::mkl::lapack::getri(_queue, targetEndmembers, A, targetEndmembers, ipiv, getr_scratchpad, getr_size).wait();
+    oneapi::mkl::lapack::getrf(_queue, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv, getrf_scratchpad, getrf_size).wait();
+    oneapi::mkl::lapack::getri(_queue, targetEndmembers, A, targetEndmembers, ipiv, getri_scratchpad, getri_size).wait();
 }
 
 
@@ -107,7 +110,6 @@ void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers
     start = std::chrono::high_resolution_clock::now();
     _queue.memcpy(image, hImage, sizeof(double) * N * bands);
     _queue.memcpy(endmembers, hEndmembers, sizeof(double) * targetEndmembers * bands);
-    _queue.memset(abundanceMatrix, 1, sizeof(abundanceMatrix) * N*targetEndmembers);
     _queue.wait();
     
     preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
