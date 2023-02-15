@@ -128,13 +128,14 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
 
     // Estimation
     const double k = 2 / static_cast<double>(samples) / static_cast<double>(lines);
-    _queue.parallel_for<class vd_30>(sycl::range<1>(bands), [=](auto i) {
+    _queue.parallel_for<class vd_30>(sycl::range<1>(FPS+1), [=](auto index) {
+        int j = index[0] + 1;
         double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
 
-        sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * k;
-        sigmaTest = sycl::sqrt(sigmaSquareTest);
+        for(int i{0}; i < bands; i++) {
+            sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * k;
+            sigmaTest = sycl::sqrt(sigmaSquareTest);
 
-        for(int j = 1; j <= FPS; j++) {
             TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
 
             if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)

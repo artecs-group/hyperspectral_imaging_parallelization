@@ -123,7 +123,6 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	double inv_N{1/static_cast<double>(N)};
 	double alpha{1.0f}, beta{0.f}, powerx{0}, powery{0};
     const double SNR_th{15 + 10 * std::log10(targetEndmembers)};
-	const size_t max_wgs = _queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>();
 
 	std::uint64_t seed{0};
 	oneapi::mkl::rng::mrg32k3a engine(_queue, seed);
