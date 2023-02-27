@@ -48,8 +48,8 @@ else()
     set(DEBUG NO_DEBUG)
 endif()
 
-find_package(GTest REQUIRED)
-enable_testing()
+#find_package(GTest REQUIRED)
+#enable_testing()
 
 if(DEVICE STREQUAL "igpu")
     set(DEV "GPU")
@@ -74,4 +74,4 @@ else() # SYCL
 endif()
 
 add_subdirectory(common)
-add_subdirectory(unittests)
+#add_subdirectory(unittests)

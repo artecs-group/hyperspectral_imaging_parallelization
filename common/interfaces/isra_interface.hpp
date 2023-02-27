@@ -16,6 +16,6 @@ class I_ISRA {
                *aux{nullptr},
                *Et_E{nullptr},
                *comput{nullptr};
-        int64_t* ipiv{nullptr};
+        long long* ipiv{nullptr};
 };
 #endif

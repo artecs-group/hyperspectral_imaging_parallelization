@@ -19,7 +19,7 @@ SequentialISRA::SequentialISRA(int _lines, int _samples, int _bands, unsigned in
     denominator = new double[lines * samples * targetEndmembers]();
     Et_E = new double[targetEndmembers*targetEndmembers];
     comput = new double[targetEndmembers*bands];
-    ipiv = new lapack_int[targetEndmembers];
+    ipiv = new long long[targetEndmembers];
 }
 
 
