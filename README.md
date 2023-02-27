@@ -5,7 +5,7 @@ Hyperspectral imaging parallelization with different programming models such as 
 ## 1. Requirements
 To run the code, you will need to install the following dependencies beforehand:
 
-- \>=Make 4.3
+- \>= Make 4.3
 - \>= CMake 3.13
 - [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html), which contains the Intel C++ compiler and the oneMKL library.
 
@@ -27,6 +27,7 @@ You first need to download the repository:
 ```bash
 > git clone https://github.com/artecs-group/hyperspectral_imaging_parallelization
 > cd hyperspectral_imaging_parallelization
+> git checkout develop
 ```
 
 Now, set the environment variables for the standalon compiler, Kokkos or oneAPI toolkit. In the case of oneAPI:
