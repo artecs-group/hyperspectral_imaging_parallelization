@@ -5,9 +5,9 @@ Hyperspectral imaging parallelization with different programming models such as 
 ## 1. Requirements
 To run the code, you will need to install the following dependencies beforehand:
 
-- \>= Make 4.3
+- \>= Make 4.2
 - \>= CMake 3.13
-- [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html), which contains the Intel C++ compiler and the oneMKL library.
+- \>= [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) 2023.0, which contains the Intel C++ compiler and the oneMKL library.
 
 Up till this point, you should be able to run the Sequential, OpenMP and SYCL(on CPU and Intel GPU) codes.
 
