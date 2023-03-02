@@ -81,6 +81,6 @@ endif()
 
 add_custom_target(run
     COMMAND ./${This} ${PROJECT_SOURCE_DIR}/data/Cuprite 5 0 5
-    DEPENDS ${This}
+    DEPENDS ${PROJECT_BINARY_DIR}/common/${This}
     WORKING_DIRECTORY .
 )
