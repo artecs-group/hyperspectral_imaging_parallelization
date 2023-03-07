@@ -18,6 +18,8 @@ if(IMPLEMENTATION STREQUAL "SEQUENTIAL")
     set(Lib_path ${CMAKE_BINARY_DIR}/sequential)
 elseif(IMPLEMENTATION STREQUAL "OPENMP")
     set(Lib_path ${CMAKE_BINARY_DIR}/openmp)
+elseif(IMPLEMENTATION STREQUAL "KOKKOS")
+    set(Lib_path ${CMAKE_BINARY_DIR}/kokkos)
 else() # SYCL
     set(Lib_path ${CMAKE_BINARY_DIR}/sycl)
 endif()
@@ -56,6 +58,10 @@ elseif(IMPLEMENTATION STREQUAL "OPENMP")
     # CFLAGS = -DGPU -DNVIDIA_GPU -I/usr/local/cuda/include -lcuda -lcublas -lcusolver -fopenmp -mp=gpu
     # CLINK = -L/usr/local/cuda/lib64 -lcudart
     endif()
+elseif(IMPLEMENTATION STREQUAL "KOKKOS")
+    set(CFLAGS "-O3")
+    target_compile_options(${This} PRIVATE ${CFLAGS})
+    target_link_libraries(${This} ${CFLAGS} Kokkos::kokkos ${Libraries})
 else() #SYCL
     set(Sycl_libs 
         ${Libraries}

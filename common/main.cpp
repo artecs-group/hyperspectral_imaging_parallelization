@@ -12,6 +12,10 @@
 #include "../openmp/VD/vd.hpp"
 #include "../openmp/VCA/vca.hpp"
 #include "../openmp/ISRA/isra.hpp"
+#elif defined(KOKKOS)
+#include "../kokkos/VD/vd.hpp"
+#include "../kokkos/VCA/vca.hpp"
+#include "../kokkos/ISRA/isra.hpp"
 #else
 #include "../sequential/VD/vd.hpp"
 #include "../sequential/VCA/vca.hpp"
@@ -78,6 +82,9 @@ int main(int argc, char* argv[]) {
 #elif defined(OPENMP)
     std::cout << "with OpenMP implementation." << std::endl << std::endl;
     OpenMP_VD vd = OpenMP_VD(lines, samples, bands);
+#elif defined(KOKKOS)
+    std::cout << "with Kokkos implementation." << std::endl << std::endl;
+    KokkosVD vd = KokkosVD(lines, samples, bands);
 #else
     std::cout << "with sequential implementation." << std::endl << std::endl;
     SequentialVD vd = SequentialVD(lines, samples, bands);
@@ -92,6 +99,8 @@ int main(int argc, char* argv[]) {
     SYCL_VCA vca = SYCL_VCA(lines, samples, bands, vd.getNumberEndmembers());
 #elif defined(OPENMP)
     OpenMP_VCA vca = OpenMP_VCA(lines, samples, bands, vd.getNumberEndmembers());
+#elif defined(KOKKOS)
+    KokkosVCA vca = KokkosVCA(lines, samples, bands, vd.getNumberEndmembers());
 #else
     SequentialVCA vca = SequentialVCA(lines, samples, bands, vd.getNumberEndmembers());
 #endif
@@ -106,6 +115,8 @@ int main(int argc, char* argv[]) {
     SYCL_ISRA isra = SYCL_ISRA(lines, samples, bands, vd.getNumberEndmembers());
 #elif defined(OPENMP)
     OpenMP_ISRA isra = OpenMP_ISRA(lines, samples, bands, vd.getNumberEndmembers());
+#elif defined(KOKKOS)
+    KokkosISRA isra = KokkosISRA(lines, samples, bands, vd.getNumberEndmembers());
 #else
     SequentialISRA isra = SequentialISRA(lines, samples, bands, vd.getNumberEndmembers());
 #endif

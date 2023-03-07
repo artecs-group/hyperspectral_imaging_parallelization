@@ -43,6 +43,7 @@ To build the project you can use the following variables to specify in which dev
 | IMPL     | Selects the implementation to run. | sequential, sycl, openmp | non-default |
 | DEVICE   | Selects the device whre to run the code. | cpu, igpu (Intel GPU), ngpu (NVIDIA GPU) | cpu |
 | PDEBUG   | Used to show debug info during the execution. | yes, no | no |
+| KOKKOS_INSTALL_DIR | Path where the user had installed Kokkos | path | /opt/kokkos/build/ |
 
 Then, to build and run the code in sequential mode for the CPU:
 
@@ -50,6 +51,17 @@ Then, to build and run the code in sequential mode for the CPU:
 > mkdir build
 > cd build
 > cmake .. -DIMPL=sequential
+> make
+> make run
+```
+
+### 2.1 Running with Kokkos
+In order to execute with Kokkos framework, you have to set where Kokkos is installed, e.g.:
+
+```bash
+> mkdir build
+> cd build
+> cmake .. -DIMPL=kokkos -DKOKKOS_INSTALL_DIR=/opt/kokkos/build
 > make
 > make run
 ```

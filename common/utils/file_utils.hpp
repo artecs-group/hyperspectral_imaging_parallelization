@@ -114,7 +114,6 @@ int loadImage(const std::string& filename, double* image, int lines, int samples
     float *type_float;
     int op{0};
     unsigned int lines_samples = lines*samples;
-    short int* tv;
     std::ifstream inFile;
     inFile.open(filename, std::ifstream::binary);
 

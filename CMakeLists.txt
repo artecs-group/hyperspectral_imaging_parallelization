@@ -11,6 +11,7 @@ set(supported_implementations
     sequential
     sycl
     openmp
+    kokkos
 )
 
 set(supported_devices
@@ -38,8 +39,19 @@ if(IMPL STREQUAL "sycl" AND DEVICE STREQUAL "ngpu")
     find_program(CMAKE_CXX_COMPILER NAMES clang++)
     set(CMAKE_CXX_COMPILER clang++)
 else()
-    find_program(CMAKE_CXX_COMPILER NAMES icpx)
     set(CMAKE_CXX_COMPILER icpx)
+    #find_package(IntelDPCPP REQUIRED)
+endif()
+
+if(IMPL STREQUAL "kokkos")
+    if(NOT DEFINED ENV{KOKKOS_INSTALL_DIR})
+        set(KOKKOS_INSTALL_DIR "/opt/kokkos/build/" CACHE PATH "Path to which Kokkos has been installed") 
+    endif()
+    
+    set(CMAKE_CXX_COMPILER ${KOKKOS_INSTALL_DIR}/bin/nvcc_wrapper)
+    set(CMAKE_CXX_EXTENSIONS Off)
+    set(Kokkos_ROOT ${KOKKOS_INSTALL_DIR}/lib/cmake/Kokkos)
+    find_package(Kokkos REQUIRED)
 endif()
 
 if(PDEBUG AND PDEBUG STREQUAL "yes")
@@ -48,13 +60,14 @@ else()
     set(DEBUG NO_DEBUG)
 endif()
 
-#find_package(GTest REQUIRED)
-#enable_testing()
+find_package(GTest REQUIRED)
+enable_testing()
 
 if(DEVICE STREQUAL "igpu")
     set(DEV "GPU")
     set(DEV_TYPE "INTEL_GPU")
 elseif(DEVICE STREQUAL "ngpu")
+    find_package(CUDA REQUIRED)
     set(DEV "GPU")
     set(DEV_TYPE "NVIDIA_GPU")
 else() # CPU
@@ -68,6 +81,9 @@ if(IMPL STREQUAL "sequential")
 elseif(IMPL STREQUAL "openmp")
     set(IMPLEMENTATION "OPENMP")
     add_subdirectory(openmp)
+elseif(IMPL STREQUAL "kokkos")
+    set(IMPLEMENTATION "KOKKOS")
+    add_subdirectory(kokkos)
 else() # SYCL
     set(IMPLEMENTATION "SYCL")
     add_subdirectory(sycl)
