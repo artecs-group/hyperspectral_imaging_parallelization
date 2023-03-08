@@ -13,6 +13,11 @@ KokkosISRA::KokkosISRA(int _lines, int _samples, int _bands, unsigned int _targe
 KokkosISRA::~KokkosISRA() {
 }
 
+double* KokkosISRA::getAbundanceMatrix() {
+    Kokkos::deep_copy(h_abundanceMatrix, abundanceMatrix);
+    return h_abundanceMatrix.data();
+}
+
 void KokkosISRA::clearMemory() {
 }
 

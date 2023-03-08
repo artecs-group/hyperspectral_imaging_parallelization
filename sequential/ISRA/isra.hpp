@@ -13,6 +13,14 @@ class SequentialISRA: I_ISRA {
     protected:
         void preProcessAbundance(const double* image, double* Ab, const double* e, int targetEndmembers, int lines, int samples, int bands);
         void invTR(double* A, int p);
+    private:
+        double *abundanceMatrix{nullptr}, 
+                *numerator{nullptr}, 
+                *denominator{nullptr}, 
+                *aux{nullptr},
+                *Et_E{nullptr},
+                *comput{nullptr};
+        long long* ipiv{nullptr};
 };
 
 #endif

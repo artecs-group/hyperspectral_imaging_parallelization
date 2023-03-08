@@ -16,6 +16,13 @@ class OpenMP_ISRA: I_ISRA {
     private:
         void runOnCPU(int maxIter, const double* image, const double* endmembers);
         void runOnGPU(int maxIter, const double* image, const double* endmembers);
+        double *abundanceMatrix{nullptr}, 
+                *numerator{nullptr}, 
+                *denominator{nullptr}, 
+                *aux{nullptr},
+                *Et_E{nullptr},
+                *comput{nullptr};
+        long long* ipiv{nullptr};
 };
 
 #endif
