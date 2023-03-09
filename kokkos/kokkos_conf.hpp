@@ -14,5 +14,5 @@ typedef Kokkos::OpenMP ExecSpace;
 typedef Kokkos::HostSpace MemSpace;
 #endif
 
-typedef Kokkos::LayoutLeft Layout;
+typedef Kokkos::LayoutRight Layout;
 #endif
