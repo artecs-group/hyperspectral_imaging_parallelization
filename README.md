@@ -71,7 +71,7 @@ In order to execute with Kokkos framework, you have to set where Kokkos is insta
 ```bash
 > mkdir build
 > cd build
-> cmake .. -DIMPL=kokkos -DKOKKOS_INSTALL_DIR=/opt/kokkos/build
+> cmake .. -DIMPL=kokkos -DKOKKOS_INSTALL_DIR=/opt/kokkos/build -DKOKKOS_KERNELS_INSTALL_DIR=/opt/kokkos-kernels/build
 > make
 > make run
 ```
