@@ -166,6 +166,9 @@ int main(int argc, char* argv[]) {
     delete[] image;
     delete[] wavelength;
 #if defined(KOKKOS)
+    vd.~KokkosVD();
+    vca.~KokkosVCA();
+    isra.~KokkosISRA();
     Kokkos::finalize();
 #endif
     return 0;

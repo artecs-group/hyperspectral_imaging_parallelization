@@ -7,15 +7,17 @@
 class KokkosVD: I_VD {
     public:
         KokkosVD(int _lines, int _samples, int _bands);
-        ~KokkosVD();
+        ~KokkosVD(){};
         void run(const int approxVal, const double* image);
         unsigned int getNumberEndmembers() { return endmembers; };
         void clearMemory();
         void initAllocMem();// Require for nvcc, not callable from constructor.
     private:
+        Kokkos::View<double[FPS], Layout, MemSpace> estimation;
         Kokkos::View<double*, Layout, MemSpace> meanSpect, Cov, Corr, CovEigVal, CorrEigVal, 
-                U, VT, estimation, meanImage, mean;
-        Kokkos::View<unsigned int*, Layout, MemSpace> count;
+                U, VT, meanImage, mean;
+        Kokkos::View<unsigned int[FPS], Layout, MemSpace> count;
+        Kokkos::View<unsigned int[1], Layout, MemSpace> d_endmembers;
 };
 
 #endif

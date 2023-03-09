@@ -70,6 +70,7 @@ endif()
 
 if(PDEBUG AND PDEBUG STREQUAL "yes")
     set(DEBUG DEBUG)
+    message(STATUS "Activated application debug info.")
 else()
     set(DEBUG NO_DEBUG)
 endif()
