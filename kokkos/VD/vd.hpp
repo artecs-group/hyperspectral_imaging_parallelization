@@ -14,8 +14,8 @@ class KokkosVD: I_VD {
         void initAllocMem();// Require for nvcc, not callable from constructor.
     private:
         Kokkos::View<double[FPS], Layout, MemSpace> estimation;
-        Kokkos::View<double**, Layout, MemSpace> Cov, Corr, U, VT, meanImage;
-        Kokkos::View<double*, Layout, MemSpace> CovEigVal, CorrEigVal, mean;
+        Kokkos::View<double**, Layout, MemSpace> Cov, Corr;
+        Kokkos::View<double*, Layout, MemSpace> CovEigVal, CorrEigVal, mean, svdWork;
         Kokkos::View<unsigned int[FPS], Layout, MemSpace> count;
         Kokkos::View<unsigned int[1], Layout, MemSpace> d_endmembers;
 };

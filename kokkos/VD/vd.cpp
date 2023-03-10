@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <KokkosBlas1_scal.hpp>
 #include <KokkosBlas3_gemm.hpp>
+#include <KokkosBatched_SVD_Decl.hpp>
 
 #include "vd.hpp"
 
@@ -16,12 +17,10 @@ KokkosVD::KokkosVD(int _lines, int _samples, int _bands) {
     Corr	   = Kokkos::View<double**, Layout, MemSpace>("Corr", bands, bands);
     CovEigVal  = Kokkos::View<double*, Layout, MemSpace>("CovEigVal", bands);
     CorrEigVal = Kokkos::View<double*, Layout, MemSpace>("CorrEigVal", bands);
-    U		   = Kokkos::View<double**, Layout, MemSpace>("U", bands, bands);
-    VT	       = Kokkos::View<double**, Layout, MemSpace>("V", bands, bands);
     count      = Kokkos::View<unsigned int[FPS], Layout, MemSpace>("count");
-    meanImage  = Kokkos::View<double**, Layout, MemSpace>("meanImage", bands, lines*samples);
     estimation = Kokkos::View<double[FPS], Layout, MemSpace>("estimation");
     mean       = Kokkos::View<double*, Layout, MemSpace>("mean", bands);
+    svdWork    = Kokkos::View<double*, Layout, MemSpace>("svdWork", bands);
     d_endmembers = Kokkos::View<unsigned int[1], Layout, MemSpace>("d_endmembers");
 }
 
@@ -45,12 +44,10 @@ void KokkosVD::clearMemory() {
     Kokkos::realloc(Kokkos::WithoutInitializing, Corr, 0, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, CovEigVal, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, CorrEigVal, 0);
-    Kokkos::realloc(Kokkos::WithoutInitializing, U, 0, 0);
-    Kokkos::realloc(Kokkos::WithoutInitializing, VT, 0, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, estimation, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, count, 0);
-    Kokkos::realloc(Kokkos::WithoutInitializing, meanImage, 0, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, mean, 0);
+    Kokkos::realloc(Kokkos::WithoutInitializing, svdWork, 0);
 }
 
 
@@ -63,24 +60,22 @@ void KokkosVD::run(const int approxVal, const double* _image) {
 
     double* raw_image = new double[N*bands];
     std::copy(_image, _image + N*bands, raw_image);
-    Kokkos::View<double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> image(raw_image, bands, N);
+    Kokkos::View<double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> meanImage(raw_image, bands, N);
 
     Kokkos::View<double*, Layout, MemSpace> CovEigVal = this->CovEigVal;
     Kokkos::View<double*, Layout, MemSpace> CorrEigVal = this->CorrEigVal;
     Kokkos::View<unsigned int[FPS], Layout, MemSpace> count = this->count;
     Kokkos::View<double[FPS], Layout, MemSpace> estimation = this->estimation;
-    Kokkos::View<double**, Layout, MemSpace> meanImage = this->meanImage;
     Kokkos::View<double*, Layout, MemSpace> mean = this->mean;
     Kokkos::View<double**, Layout, MemSpace> Cov = this->Cov;
     Kokkos::View<double**, Layout, MemSpace> Corr = this->Corr;
     Kokkos::View<unsigned int[1], Layout, MemSpace> d_endmembers = this->d_endmembers;
+    Kokkos::View<double*, Layout, MemSpace> svdWork = this->svdWork;
     unsigned int bands   = this->bands;
     unsigned int samples = this->samples;
     unsigned int lines   = this->lines;
 
     start = std::chrono::high_resolution_clock::now();
-    // auto slice = Kokkos::subview(meanImage, 0, Kokkos::ALL());
-    // KokkosBlas::sum(slice);
     Kokkos::parallel_for("vd_15", 
     Kokkos::RangePolicy<ExecSpace>(0, bands), 
     KOKKOS_LAMBDA(const int i){
@@ -104,10 +99,17 @@ void KokkosVD::run(const int approxVal, const double* _image) {
         Corr(i, j) = Cov(i, j) + (mean(i) * mean(j));
     });
 
-    // SVD
-    // oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::novec, bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, gesvd_scratchpad, _scrach_size);
-    // oneapi::mkl::lapack::gesvd(_queue, oneapi::mkl::jobsvd::somevec, oneapi::mkl::jobsvd::novec, bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, gesvd_scratchpad, _scrach_size);
-    // _queue.wait();
+    Kokkos::parallel_for("vd_35", 
+    Kokkos::RangePolicy<ExecSpace>(0, 1), 
+    KOKKOS_LAMBDA(const int i){
+        KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_S_Tag(), Cov, CovEigVal, svdWork);
+    });
+
+    Kokkos::parallel_for("vd_37", 
+    Kokkos::RangePolicy<ExecSpace>(0, 1), 
+    KOKKOS_LAMBDA(const int i){
+        KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_S_Tag(), Corr, CorrEigVal, svdWork);
+    });
 
     // Estimation
     const double k = 2 / static_cast<double>(samples) / static_cast<double>(lines);
