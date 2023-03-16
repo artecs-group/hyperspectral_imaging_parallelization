@@ -9,15 +9,15 @@
 class KokkosVCA: I_VCA {
     public:
         KokkosVCA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers);
-        ~KokkosVCA();
+        ~KokkosVCA() {};
         void run(float SNR, const double* image);
         double* getEndmembers();
         void clearMemory();
     private:
         Kokkos::View<unsigned int*, Layout, MemSpace> index;
-        Kokkos::View<double*, Layout, MemSpace> Ud, x_p, y, meanImage, mean, svdMat, D, U, VT, Rp, u, sumxu,
-             w, A, A_copy, pinvA, aux, f, endmembers, h_endmembers, pinvS, pinvU, pinvVT, pinv_work, work,
-             Utranstmp;
+        Kokkos::View<double**, Layout, MemSpace> x_p, y, meanImage, svdMat, U, VT, endmembers, h_endmembers,
+            Rp, A, A_copy, aux, pinvU, pinvVT;
+        Kokkos::View<double*, Layout, MemSpace> mean, D, u, sumxu, w, f, pinvS, pinv_work, work;
 };
 
 #endif

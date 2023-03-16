@@ -22,8 +22,7 @@ class SYCL_VCA: I_VCA {
         int64_t* imax{nullptr}; 
         int pinv_lwork, lwork;
         unsigned int* index{nullptr};
-        double *Ud{nullptr},
-            * x_p{nullptr},
+        double * x_p{nullptr},
             * y{nullptr},
             * meanImage{nullptr},
             * mean{nullptr},
@@ -46,7 +45,6 @@ class SYCL_VCA: I_VCA {
             * pinvVT{nullptr},
             * pinv_work{nullptr},
             * work{nullptr},
-            * Utranstmp{nullptr},
             *gesvd_scratchpad{nullptr}, 
             *pinv_scratchpad{nullptr}, 
             *dImage{nullptr}, 

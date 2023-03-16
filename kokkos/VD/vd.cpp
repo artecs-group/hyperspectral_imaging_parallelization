@@ -80,9 +80,10 @@ void KokkosVD::run(const int approxVal, const double* _image) {
     unsigned int samples = this->samples;
     unsigned int lines   = this->lines;
 
+    start = std::chrono::high_resolution_clock::now();
+
     Kokkos::deep_copy(meanImage, vImage);
 
-    start = std::chrono::high_resolution_clock::now();
     Kokkos::parallel_for("vd_15", 
     Kokkos::RangePolicy<ExecSpace>(0, bands), 
     KOKKOS_LAMBDA(const int i){

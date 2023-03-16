@@ -18,7 +18,6 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
     bands   = _bands;
     targetEndmembers = _targetEndmembers;
 
-    Ud         = sycl::malloc_device<double>(bands * targetEndmembers, _queue);
 	x_p        = sycl::malloc_device<double>(lines * samples * targetEndmembers, _queue);
 	y          = sycl::malloc_device<double>(lines * samples * targetEndmembers, _queue);
 	dImage     = sycl::malloc_device<double>(bands * lines * samples, _queue);
@@ -89,7 +88,6 @@ void SYCL_VCA::clearMemory() {
 	if(!isQueueInit())
 		return;
 	
-    if(Ud != nullptr) {sycl::free(Ud, _queue); Ud = nullptr;}
 	if(x_p != nullptr) {sycl::free(x_p, _queue); x_p = nullptr;}
 	if(y != nullptr) {sycl::free(y, _queue); y = nullptr;}
 	if(dImage != nullptr) {sycl::free(dImage, _queue); dImage = nullptr;}
@@ -128,7 +126,6 @@ void SYCL_VCA::run(float SNR, const double* image) {
 	oneapi::mkl::rng::mrg32k3a engine(_queue, seed);
 	oneapi::mkl::rng::gaussian<double, oneapi::mkl::rng::gaussian_method::box_muller2> distr(0.0, 1.0);
 
-    double* Ud = this->Ud;
 	double* x_p = this->x_p;
 	double* y = this->y;
 	double* dImage = this->dImage;
