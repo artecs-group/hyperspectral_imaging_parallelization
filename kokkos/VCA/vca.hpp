@@ -14,9 +14,9 @@ class KokkosVCA: I_VCA {
         double* getEndmembers();
         void clearMemory();
     private:
-        Kokkos::View<unsigned int*, Layout, MemSpace> index;
-        Kokkos::View<double**, Layout, MemSpace> x_p, y, meanImage, svdMat, U, VT, endmembers, h_endmembers,
-            Rp, A, A_copy, aux, pinvU, pinvVT;
+        Kokkos::View<double**, Layout, Kokkos::HostSpace> h_endmembers;
+        Kokkos::View<double**, Layout, MemSpace> x_p, y, meanImage, svdMat, U, VT, endmembers,
+            Rp, A, A_copy, aux, pinvU, pinvVT, image;
         Kokkos::View<double*, Layout, MemSpace> mean, D, u, sumxu, w, f, pinvS, pinv_work, work;
 };
 

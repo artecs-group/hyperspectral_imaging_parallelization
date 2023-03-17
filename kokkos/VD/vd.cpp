@@ -61,10 +61,6 @@ void KokkosVD::run(const int approxVal, const double* _image) {
     const unsigned int N{lines*samples};
     const double inv_N{1 / static_cast<double>(N)};
     const double alpha{(double) 1/N}, beta{0};
-    double* hImage = new double[bands*N];
-
-    std::copy(_image, _image + bands*N, hImage);
-    Kokkos::View<double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> vImage(hImage, bands, N);
 
     Kokkos::View<double*, Layout, MemSpace> CovEigVal = this->CovEigVal;
     Kokkos::View<double*, Layout, MemSpace> CorrEigVal = this->CorrEigVal;
@@ -79,6 +75,8 @@ void KokkosVD::run(const int approxVal, const double* _image) {
     unsigned int bands   = this->bands;
     unsigned int samples = this->samples;
     unsigned int lines   = this->lines;
+
+    Kokkos::View<const double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> vImage(_image, bands, N);
 
     start = std::chrono::high_resolution_clock::now();
 
@@ -155,6 +153,4 @@ void KokkosVD::run(const int approxVal, const double* _image) {
     std::cout << "Test = " << endmembers << std::endl;
 #endif
     std::cout << std::endl << "VD took = " << tVd << " (s)" << std::endl;
-    
-    delete[] hImage;
 }

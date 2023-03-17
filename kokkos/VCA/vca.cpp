@@ -6,6 +6,11 @@
 #include <random>
 #include <limits>
 
+#include <KokkosBlas1_scal.hpp>
+#include <KokkosBlas1_dot.hpp>
+#include <KokkosBlas3_gemm.hpp>
+#include <KokkosBatched_SVD_Decl.hpp>
+
 #include "vca.hpp"
 
 KokkosVCA::KokkosVCA(int _lines, int _samples, int _bands, unsigned int _targetEndmembers) {
@@ -22,7 +27,7 @@ KokkosVCA::KokkosVCA(int _lines, int _samples, int _bands, unsigned int _targetE
     U            = Kokkos::View<double**, Layout, MemSpace>("U", bands, bands);
     VT           = Kokkos::View<double**, Layout, MemSpace>("VT", bands, bands);
     endmembers   = Kokkos::View<double**, Layout, MemSpace>("endmembers", bands, targetEndmembers);
-    h_endmembers = Kokkos::View<double**, Layout, MemSpace>("h_endmembers", bands, targetEndmembers);
+    h_endmembers = Kokkos::View<double**, Layout, Kokkos::HostSpace>("h_endmembers", bands, targetEndmembers);
     Rp           = Kokkos::View<double**, Layout, MemSpace>("Rp", bands, lines*samples);
     u            = Kokkos::View<double*, Layout, MemSpace>("u", targetEndmembers);
     sumxu        = Kokkos::View<double*, Layout, MemSpace>("sumxu", lines*samples);
@@ -36,10 +41,10 @@ KokkosVCA::KokkosVCA(int _lines, int _samples, int _bands, unsigned int _targetE
     pinvVT       = Kokkos::View<double**, Layout, MemSpace>("pinvVT", targetEndmembers, targetEndmembers);
     pinv_work    = Kokkos::View<double*, Layout, MemSpace>("pinv_work", targetEndmembers);
     work         = Kokkos::View<double*, Layout, MemSpace>("work", bands);
+    image        = Kokkos::View<double**, Layout, MemSpace>("image", bands, lines*samples);
 }
 
 double* KokkosVCA::getEndmembers() {
-    Kokkos::deep_copy(h_endmembers, endmembers);
     return h_endmembers.data();
 }
 
@@ -65,10 +70,11 @@ void KokkosVCA::clearMemory() {
     Kokkos::realloc(Kokkos::WithoutInitializing, pinvVT, 0, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, pinv_work, 0);
     Kokkos::realloc(Kokkos::WithoutInitializing, work, 0);
+    Kokkos::realloc(Kokkos::WithoutInitializing, image, 0, 0);
 }
 
 
-void KokkosVCA::run(float SNR, const double* image) {
+void KokkosVCA::run(float SNR, const double* _image) {
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
     float tVca{0.f};
     unsigned int N{lines*samples};
@@ -85,7 +91,7 @@ void KokkosVCA::run(float SNR, const double* image) {
     Kokkos::View<double**, Layout, MemSpace> U = this->U;
     Kokkos::View<double**, Layout, MemSpace> VT = this->VT;
     Kokkos::View<double**, Layout, MemSpace> endmembers = this->endmembers;
-    Kokkos::View<double**, Layout, MemSpace> h_endmembers = this->h_endmembers;
+    Kokkos::View<double**, Layout, Kokkos::HostSpace> h_endmembers = this->h_endmembers;
     Kokkos::View<double**, Layout, MemSpace> Rp = this->Rp;
     Kokkos::View<double*, Layout, MemSpace> u = this->u;
     Kokkos::View<double*, Layout, MemSpace> sumxu = this->sumxu;
@@ -99,10 +105,11 @@ void KokkosVCA::run(float SNR, const double* image) {
     Kokkos::View<double**, Layout, MemSpace> pinvVT = this->pinvVT;
     Kokkos::View<double*, Layout, MemSpace> pinv_work = this->pinv_work;
     Kokkos::View<double*, Layout, MemSpace> work = this->work;
-	unsigned int lines = this->lines;
-	unsigned int samples = this->samples;
+    Kokkos::View<double**, Layout, MemSpace> image = this->image;
 	unsigned int bands = this->bands;
 	unsigned int targetEndmembers = this->targetEndmembers;
+
+    Kokkos::View<const double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> hImage(_image, bands, N);
 
     Kokkos::parallel_for("vca_10", 
     Kokkos::RangePolicy<ExecSpace>(0, 1), 
@@ -111,10 +118,51 @@ void KokkosVCA::run(float SNR, const double* image) {
     });
 
     start = std::chrono::high_resolution_clock::now();
+    Kokkos::deep_copy(image, hImage);
 
     /***********
 	 * SNR estimation
 	 ***********/
+    Kokkos::parallel_for("vca_20", 
+    Kokkos::RangePolicy<ExecSpace>(0, bands), 
+    KOKKOS_LAMBDA(const int i){
+        for(int j{0}; j < N; j++)
+            mean(i) += image(i, j);
+    });
+
+    KokkosBlas::scal(mean, inv_N, mean);
+
+    Kokkos::parallel_for("vca_30", 
+    Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>> ({0,0}, {bands, N}), 
+    KOKKOS_LAMBDA(const int i, const int j){
+        meanImage(i, j) = image(i, j) - mean(i);
+    });
+
+    KokkosBlas::gemm("N", "T", alpha, meanImage, meanImage, beta, svdMat);
+    KokkosBlas::scal(svdMat, inv_N, svdMat);
+
+    Kokkos::parallel_for("vca_40", 
+    Kokkos::RangePolicy<ExecSpace>(0, 1), 
+    KOKKOS_LAMBDA(const int i){
+        KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), svdMat, U, D, VT, work);
+    });
+
+    //Hint: Kokkos::Subview does not work, since gemm definition just accept Kokkos::View
+    Kokkos::resize(U, bands, targetEndmembers);
+    KokkosBlas::gemm("T", "N", alpha, U, meanImage, beta, x_p);
+
+    Kokkos::View<double*, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> flatImage(image.data(), bands*N);
+    double redI = KokkosBlas::dot(flatImage, flatImage);
+
+    Kokkos::View<double*, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> flatXp(x_p.data(), targetEndmembers*N);
+    double redX = KokkosBlas::dot(flatXp, flatXp);
+
+    double redM = KokkosBlas::dot(mean, mean);
+
+	powery = redI / N; 
+	powerx = redX / N + redM;
+	SNR = (SNR < 0) ? 10 * std::log10((powerx - targetEndmembers / bands * powery) / (powery - powerx)) : SNR;
+
 #if defined(DEBUG)
 		std::cout << "SNR    = " << SNR << std::endl 
 				  << "SNR_th = " << SNR_th << std::endl;
@@ -146,8 +194,9 @@ void KokkosVCA::run(float SNR, const double* image) {
 
     end = std::chrono::high_resolution_clock::now();
     tVca += std::chrono::duration_cast<std::chrono::duration<float>>(end - start).count();
+    Kokkos::deep_copy(h_endmembers, endmembers);
 #if defined(DEBUG)
-    double* ends = getEndmembers();
+    double* ends = h_endmembers.data();
 	int test = std::accumulate(ends, ends + (targetEndmembers * bands), 0);
     std::cout << "Test = " << test << std::endl;
 #endif
