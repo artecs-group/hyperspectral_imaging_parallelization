@@ -6,10 +6,12 @@
 #include <random>
 #include <limits>
 
+#include <Kokkos_Random.hpp>
 #include <KokkosBlas1_scal.hpp>
 #include <KokkosBlas1_dot.hpp>
-#include <KokkosBlas3_gemm.hpp>
-#include <KokkosBatched_SVD_Decl.hpp>
+#include <KokkosBlas1_iamax.hpp>
+#include <KokkosBlas1_axpby.hpp>
+#include <KokkosBatched_Gemm_Decl.hpp>
 
 #include "vca.hpp"
 
@@ -42,6 +44,7 @@ KokkosVCA::KokkosVCA(int _lines, int _samples, int _bands, unsigned int _targetE
     pinv_work    = Kokkos::View<double*, Layout, MemSpace>("pinv_work", targetEndmembers);
     work         = Kokkos::View<double*, Layout, MemSpace>("work", bands);
     image        = Kokkos::View<double**, Layout, MemSpace>("image", bands, lines*samples);
+    redVar         = Rank0Type("redVar");
 }
 
 double* KokkosVCA::getEndmembers() {
@@ -81,6 +84,7 @@ void KokkosVCA::run(float SNR, const double* _image) {
 	double inv_N{1/static_cast<double>(N)};
 	double alpha{1.0f}, beta{0.f}, powerx{0}, powery{0};
     const double SNR_th{15 + 10 * std::log10(targetEndmembers)};
+    Kokkos::Random_XorShift64_Pool<ExecSpace> pool(0);
 
     Kokkos::View<double**, Layout, MemSpace> x_p = this->x_p;
     Kokkos::View<double**, Layout, MemSpace> y = this->y;
@@ -106,6 +110,7 @@ void KokkosVCA::run(float SNR, const double* _image) {
     Kokkos::View<double*, Layout, MemSpace> pinv_work = this->pinv_work;
     Kokkos::View<double*, Layout, MemSpace> work = this->work;
     Kokkos::View<double**, Layout, MemSpace> image = this->image;
+    Rank0Type redVar = this->redVar;
 	unsigned int bands = this->bands;
 	unsigned int targetEndmembers = this->targetEndmembers;
 
@@ -175,20 +180,150 @@ void KokkosVCA::run(float SNR, const double* _image) {
 #if defined(DEBUG)
 		std::cout << "Select proj. to p-1"<< std::endl;
 #endif
-	}
 
+        Kokkos::parallel_for("vca_50", 
+        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>> ({0, targetEndmembers-1}, {bands, bands - targetEndmembers}), 
+        KOKKOS_LAMBDA(const int i, const int j){
+            U(i, j) = 0;
+        });
+
+        Kokkos::parallel_for("vca_60", 
+        Kokkos::RangePolicy<ExecSpace> (0, N), 
+        KOKKOS_LAMBDA(const int j){
+            x_p(targetEndmembers-1, j) = 0;
+        });
+
+        Kokkos::parallel_for("vca_70", 
+        Kokkos::RangePolicy<ExecSpace> (0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int i){
+            for(int j{0}; j < N; j++)
+                u(i) += x_p(i, j) * x_p(i, j);
+        });
+
+        KokkosBlas::iamax(redVar, u);
+
+        Kokkos::parallel_for("vca_80", 
+        Kokkos::RangePolicy<ExecSpace>(0, 1), 
+        KOKKOS_LAMBDA(const int i){
+            redVar() = Kokkos::sqrt(u(redVar()));
+        });
+
+        KokkosBlas::gemm("N", "N", alpha, U, x_p, beta, Rp);
+
+        Kokkos::parallel_for("vca_90", 
+        Kokkos::RangePolicy<ExecSpace>(0, bands), 
+        KOKKOS_LAMBDA(const int i){
+            for (size_t j = 0; j < N; j++)
+                Rp(i, j) += mean(i);
+        });
+
+        Kokkos::parallel_for("vca_100", 
+        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>> ({0, 0}, {targetEndmembers-1, N}), 
+        KOKKOS_LAMBDA(const int i, const int j){
+            y(i, j) = x_p(i, j);
+        });
+
+        Kokkos::parallel_for("vca_110", 
+        Kokkos::RangePolicy<ExecSpace>(0, N), 
+        KOKKOS_LAMBDA(const int i){
+            y(targetEndmembers-1, i) = redVar();
+        });
+	}
 	else {
 #if defined(DEBUG)
 		std::cout << "Select the projective proj."<< std::endl;
 #endif
+        KokkosBlas::gemm("N", "T", alpha, meanImage, meanImage, beta, svdMat);
+        KokkosBlas::scal(svdMat, inv_N, svdMat);
+
+        Kokkos::resize(U, bands, bands);
+        Kokkos::parallel_for("vca_120", 
+        Kokkos::RangePolicy<ExecSpace>(0, 1), 
+        KOKKOS_LAMBDA(const int i){
+            KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), svdMat, U, D, VT, work);
+        });
+
+        Kokkos::resize(U, bands, targetEndmembers);
+        KokkosBlas::gemm("N", "T", alpha, U, meanImage, beta, x_p);
+        KokkosBlas::gemm("N", "N", alpha, U, x_p, beta, Rp);
+
+        Kokkos::parallel_for("vca_120", 
+        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int i){
+            for (size_t j = 0; j < N; j++)
+                u(i) += x_p(i, j);
+            u(i) *= inv_N;
+        });
+
+        Kokkos::parallel_for("vca_130", 
+        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int i){
+            for (size_t j = 0; j < N; j++)
+                y(i, j) += x_p(i, j) * u(i);
+        });
+
+        Kokkos::parallel_for("vca_140", 
+        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int i){
+            for (size_t j = 0; j < N; j++)
+                sumxu(i) += y(i, j);
+        });
+
+        Kokkos::parallel_for("vca_150", 
+        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int i){
+            for (size_t j = 0; j < N; j++)
+                y(i, j) /= sumxu(j);
+        });
 	}
 	/******************/
 
 	/*******************
 	 * VCA algorithm
 	 *******************/
+    using namespace KokkosBatched;
 	for(int i = 0; i < targetEndmembers; i++) {
+        Kokkos::fill_random(w, pool, 0.0, 1.0);
+        Kokkos::deep_copy(A_copy, A);
+        pinv(A_copy, targetEndmembers, pinvS, pinvU, pinvVT, pinv_work);
+        KokkosBlas::gemm("N", "N", alpha, A, A_copy, beta, aux);
 
+        Kokkos::parallel_for("vca_160", 
+        Kokkos::RangePolicy<ExecSpace>(0, 1), 
+        KOKKOS_LAMBDA(const int j){
+            SerialGemm<Trans::NoTranspose, Trans::NoTranspose, Algo::Gemm::Unblocked>
+                ::invoke(alpha, aux, w, beta, f);
+        });
+
+        KokkosBlas::axpy(-1.0, w, f);
+        KokkosBlas::dot(redVar, f, f);
+
+        Kokkos::parallel_for("vca_170", 
+        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int j){
+            f(j) /= Kokkos::sqrt(redVar());
+        });
+
+        Kokkos::parallel_for("vca_180", 
+        Kokkos::RangePolicy<ExecSpace>(0, 1), 
+        KOKKOS_LAMBDA(const int j){
+            SerialGemm<Trans::Transpose, Trans::NoTranspose, Algo::Gemm::Unblocked>
+                ::invoke(alpha, y, f, beta, sumxu);
+        });
+
+        KokkosBlas::iamax(redVar, sumxu);
+
+        Kokkos::parallel_for("vca_190", 
+        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        KOKKOS_LAMBDA(const int j){
+            A(j, i) = y(j, redVar());
+        });
+
+        Kokkos::parallel_for("vca_200", 
+        Kokkos::RangePolicy<ExecSpace>(0, bands), 
+        KOKKOS_LAMBDA(const int j){
+            endmembers(j, i) = Rp(j, redVar());
+        });
 	}
 	/******************/
 
