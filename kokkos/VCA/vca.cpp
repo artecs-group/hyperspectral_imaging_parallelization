@@ -313,11 +313,11 @@ void KokkosVCA::run(float SNR, const double* _image) {
 
         KokkosBlas::iamax(redVar, sumxu);
 
-        Kokkos::parallel_for("vca_190", 
-        Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
-        KOKKOS_LAMBDA(const int j){
-            A(j, i) = y(j, redVar());
-        });
+        // Kokkos::parallel_for("vca_190", 
+        // Kokkos::RangePolicy<ExecSpace>(0, targetEndmembers), 
+        // KOKKOS_LAMBDA(const int j){
+        //     A(j, i) = y(j, redVar());
+        // });
 
         Kokkos::parallel_for("vca_200", 
         Kokkos::RangePolicy<ExecSpace>(0, bands), 
