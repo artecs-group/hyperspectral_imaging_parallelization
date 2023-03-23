@@ -112,7 +112,8 @@ void SYCL_ISRA::run(int maxIter, const double* hImage, const double* hEndmembers
     _queue.memcpy(endmembers, hEndmembers, sizeof(double) * targetEndmembers * bands);
     _queue.wait();
     
-    preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
+    //preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
+    _queue.memset(abundanceMatrix, 1, targetEndmembers * N * sizeof(double)).wait();
     oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, image, N, endmembers, targetEndmembers, beta, numerator, N);
     oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, targetEndmembers, targetEndmembers, bands, alpha, endmembers, targetEndmembers, endmembers, targetEndmembers, beta, aux, targetEndmembers);
     _queue.wait();
