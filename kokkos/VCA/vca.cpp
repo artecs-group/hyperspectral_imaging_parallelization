@@ -114,7 +114,7 @@ void KokkosVCA::run(float SNR, const double* _image) {
 	unsigned int bands = this->bands;
 	unsigned int targetEndmembers = this->targetEndmembers;
 
-    Kokkos::View<const double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> hImage(_image, bands, N);
+    Kokkos::View<const double**, Layout, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> hImage(_image, bands, N);
 
     Kokkos::parallel_for("vca_10", 
     Kokkos::RangePolicy<ExecSpace>(0, 1), 
@@ -182,9 +182,9 @@ void KokkosVCA::run(float SNR, const double* _image) {
 #endif
 
         Kokkos::parallel_for("vca_50", 
-        Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<2>> ({0, targetEndmembers-1}, {bands, bands - targetEndmembers}), 
-        KOKKOS_LAMBDA(const int i, const int j){
-            U(i, j) = 0;
+        Kokkos::RangePolicy<ExecSpace> (0, bands), 
+        KOKKOS_LAMBDA(const int i){
+            U(i, targetEndmembers-1) = 0;
         });
 
         Kokkos::parallel_for("vca_60", 

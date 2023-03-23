@@ -76,7 +76,7 @@ void KokkosVD::run(const int approxVal, const double* _image) {
     unsigned int samples = this->samples;
     unsigned int lines   = this->lines;
 
-    Kokkos::View<const double**, Layout, MemSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> vImage(_image, bands, N);
+    Kokkos::View<const double**, Layout, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>> vImage(_image, bands, N);
 
     start = std::chrono::high_resolution_clock::now();
 

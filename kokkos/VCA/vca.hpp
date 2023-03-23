@@ -21,7 +21,6 @@ class KokkosVCA: I_VCA {
         Kokkos::View<double**, Layout, MemSpace> x_p, y, meanImage, svdMat, U, VT, endmembers,
             Rp, A, A_copy, aux, pinvU, pinvVT, image;
         Kokkos::View<double*, Layout, MemSpace> mean, D, u, sumxu, w, f, pinvS, pinv_work, work;
-        //Kokkos::View<double[1], Layout, MemSpace> redVar;
         typedef Kokkos::View<typename decltype(u)::size_type, MemSpace> Rank0Type;
         Rank0Type redVar;
 };
