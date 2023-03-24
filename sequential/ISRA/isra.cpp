@@ -72,7 +72,10 @@ void SequentialISRA::run(int maxIter, const double* image, const double* endmemb
 
     start = std::chrono::high_resolution_clock::now();
 
-    preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
+    //preProcessAbundance(image, abundanceMatrix,  endmembers, targetEndmembers, lines, samples, bands);
+    for (size_t i = 0; i < targetEndmembers*N; i++)
+        abundanceMatrix[i] = 1;
+    
     cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, targetEndmembers, bands, alpha, image, N, endmembers, targetEndmembers, beta, numerator, N);
     cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, targetEndmembers, targetEndmembers, bands, alpha, endmembers, targetEndmembers, endmembers, targetEndmembers, beta, aux, targetEndmembers);
 

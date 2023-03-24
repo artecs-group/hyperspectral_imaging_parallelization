@@ -20,7 +20,14 @@ class SYCL_ISRA: I_ISRA {
         double *image{nullptr}, 
                *endmembers{nullptr},
                *getrf_scratchpad{nullptr},
-               *getri_scratchpad{nullptr};
+               *getri_scratchpad{nullptr},
+               *abundanceMatrix{nullptr}, 
+                *numerator{nullptr}, 
+                *denominator{nullptr}, 
+                *aux{nullptr},
+                *Et_E{nullptr},
+                *comput{nullptr};
+        int64_t* ipiv{nullptr};
 };
 
 #endif

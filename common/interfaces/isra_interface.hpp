@@ -10,12 +10,5 @@ class I_ISRA {
         virtual void preProcessAbundance(const double* image, double* Ab, const double* e, int targetEndmembers, int lines, int samples, int bands) = 0;
         virtual void invTR(double* A, int p) = 0;
         unsigned int lines, samples, bands, targetEndmembers;
-        double *abundanceMatrix{nullptr}, 
-               *numerator{nullptr}, 
-               *denominator{nullptr}, 
-               *aux{nullptr},
-               *Et_E{nullptr},
-               *comput{nullptr};
-        long long* ipiv{nullptr};
 };
 #endif

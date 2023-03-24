@@ -9,15 +9,5 @@ class I_VD {
     protected:
         static constexpr int FPS{5};
         unsigned int lines, samples, bands, endmembers;
-        double *meanSpect{nullptr}, 
-               *Cov{nullptr}, 
-               *Corr{nullptr}, 
-               *CovEigVal{nullptr}, 
-               *CorrEigVal{nullptr}, 
-               *U{nullptr}, 
-               *VT{nullptr}, 
-               *estimation{nullptr}, 
-               *meanImage{nullptr};
-        unsigned int* count{nullptr};
 };
 #endif

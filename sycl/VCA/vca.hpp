@@ -20,10 +20,35 @@ class SYCL_VCA: I_VCA {
         sycl::queue _queue;
         int64_t scrach_size, pinv_size;
         int64_t* imax{nullptr}; 
-        double *gesvd_scratchpad{nullptr}, 
-               *pinv_scratchpad{nullptr}, 
-               *dImage{nullptr}, 
-               *redVars{nullptr};
+        int pinv_lwork, lwork;
+        unsigned int* index{nullptr};
+        double * x_p{nullptr},
+            * y{nullptr},
+            * meanImage{nullptr},
+            * mean{nullptr},
+            * svdMat{nullptr},
+            * D{nullptr},
+            * U{nullptr},
+            * VT{nullptr},
+            * Rp{nullptr},
+            * u{nullptr},
+            * sumxu{nullptr},
+            * w{nullptr},
+            * A{nullptr},
+            * A_copy{nullptr},
+            * pinvA{nullptr},
+            * aux{nullptr},
+            * f{nullptr},
+            * endmembers{nullptr},
+            * pinvS{nullptr},
+            * pinvU{nullptr},
+            * pinvVT{nullptr},
+            * pinv_work{nullptr},
+            * work{nullptr},
+            *gesvd_scratchpad{nullptr}, 
+            *pinv_scratchpad{nullptr}, 
+            *dImage{nullptr}, 
+            *redVars{nullptr};
 };
 
 

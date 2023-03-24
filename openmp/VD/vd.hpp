@@ -13,6 +13,17 @@ class OpenMP_VD: I_VD {
     private:
         void runOnCPU(const int approxVal, const double* image);
         void runOnGPU(const int approxVal, const double* image);
+
+        double *meanSpect{nullptr}, 
+               *Cov{nullptr}, 
+               *Corr{nullptr}, 
+               *CovEigVal{nullptr}, 
+               *CorrEigVal{nullptr}, 
+               *U{nullptr}, 
+               *VT{nullptr}, 
+               *estimation{nullptr}, 
+               *meanImage{nullptr};
+        unsigned int* count{nullptr};
 };
 
 #endif

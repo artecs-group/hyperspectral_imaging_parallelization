@@ -14,7 +14,17 @@ class SYCL_VD: I_VD {
     private:
         sycl::queue _queue;
         int64_t _scrach_size;
-        double *mean{nullptr},
+        unsigned int* count{nullptr};
+        double *meanSpect{nullptr}, 
+               *Cov{nullptr}, 
+               *Corr{nullptr}, 
+               *CovEigVal{nullptr}, 
+               *CorrEigVal{nullptr}, 
+               *U{nullptr}, 
+               *VT{nullptr}, 
+               *estimation{nullptr}, 
+               *meanImage{nullptr},
+               *mean{nullptr},
                *gesvd_scratchpad{nullptr};
 };
 
