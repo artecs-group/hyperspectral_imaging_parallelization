@@ -61,7 +61,7 @@ elseif(IMPLEMENTATION STREQUAL "OPENMP")
 elseif(IMPLEMENTATION STREQUAL "KOKKOS")
     set(CFLAGS "-O3")
     target_compile_options(${This} PRIVATE ${CFLAGS})
-    target_link_libraries(${This} ${CFLAGS} Kokkos::kokkoskernels ${Libraries})
+    target_link_libraries(${This} ${CFLAGS} ${Libraries} Kokkos::kokkoskernels)
 else() #SYCL
     set(Sycl_libs 
         ${Libraries}
