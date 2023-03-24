@@ -1,5 +1,8 @@
-.vscode
-data/
+.vscode/*
+data/*
+!data/test/
+!data/Cuprite
+!data/Cuprite.hdr
 *.out
-*.o
-main*
+*02.txt
+build*/
