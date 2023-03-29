@@ -134,9 +134,9 @@ void SYCL_VD::run(const int approxVal, const double* h_image) {
 
         for(int i{0}; i < bands; i++) {
             sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * k;
-            sigmaTest = sycl::sqrt(sigmaSquareTest);
+            sigmaTest = sycl::sqrt(sigmaSquareTest) * M_SQRT2;
 
-            TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
+            TaoTest = sigmaTest * estimation[j-1];
 
             if((CorrEigVal[i] - CovEigVal[i]) > TaoTest)
                 count[j-1]++;
