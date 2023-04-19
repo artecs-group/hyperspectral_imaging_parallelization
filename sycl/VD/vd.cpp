@@ -25,7 +25,7 @@ SYCL_VD::SYCL_VD(int _lines, int _samples, int _bands){
     count      = sycl::malloc_device<unsigned int>(FPS, _queue);
     meanImage  = sycl::malloc_device<double>(lines*samples*bands, _queue);
     estimation = sycl::malloc_device<double>(FPS, _queue);
-    mean       = sycl::malloc_shared<double>(bands, _queue); //BUG: keep it shared to avoid error of compatibility with CUDA
+    mean       = sycl::malloc_device<double>(bands, _queue);
     _scrach_size = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(
                     _queue, 
                     oneapi::mkl::jobsvd::somevec, 
