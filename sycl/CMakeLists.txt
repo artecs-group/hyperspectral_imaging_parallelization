@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.20.5)
 
 add_subdirectory(ISRA)
 add_subdirectory(VCA)

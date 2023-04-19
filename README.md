@@ -7,8 +7,8 @@ Hyperspectral imaging parallelization with different programming models such as 
 To run the code, you will need to install the following dependencies beforehand:
 
 - \>= Make 4.2
-- \>= CMake 3.13
-- \>= [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) 2023.0, which contains the Intel C++ compiler and the oneMKL library.
+- \>= CMake 3.20.5
+- \>= [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html) 2023.1, which contains the Intel C++ compiler and the oneMKL library.
 
 Up till this point, you should be able to run the Sequential, OpenMP and SYCL(on CPU and Intel GPU) codes.
 
@@ -49,7 +49,7 @@ To build the project you can use the following variables to specify in which dev
 
 | Variable | Description | Values | Default |
 |----------|-------------|--------|---------|
-| IMPL     | Selects the implementation to run. | sequential, sycl, openmp | non-default |
+| IMPL     | Selects the implementation to run. | sequential, sycl, openmp, kokkos | non-default |
 | DEVICE   | Selects the device whre to run the code. | cpu, igpu (Intel GPU), ngpu (NVIDIA GPU) | cpu |
 | PDEBUG   | Used to show debug info during the execution. | yes, no | no |
 | KOKKOS_INSTALL_DIR | Path where the user had installed Kokkos | path | /opt/kokkos/build/ |
@@ -60,10 +60,12 @@ Then, to build and run the code in sequential mode for the CPU:
 ```bash
 > mkdir build
 > cd build
-> cmake .. -DIMPL=sequential
+> cmake .. -DCMAKE_CXX_COMPILER=icpx -DIMPL=sequential
 > make
 > make run
 ```
+
+```NOTE:``` just for sequential, sycl, openmp, you must include the following flag "-DCMAKE_CXX_COMPILER=icpx"
 
 ### 2.1 Running with Kokkos
 In order to execute with Kokkos framework, you have to set where Kokkos is installed, e.g.:

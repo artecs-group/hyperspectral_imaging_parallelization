@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.20.5)
 
 set(This hyperspectral_imaging_parallelization)
 
@@ -49,12 +49,8 @@ else() # CPU
     message(STATUS "Chosen CPU as the device to run.")
 endif()
 
-if(IMPL STREQUAL "sycl" AND DEVICE STREQUAL "ngpu")
-    find_program(CMAKE_CXX_COMPILER NAMES clang++)
-    set(CMAKE_CXX_COMPILER clang++)
-elseif(IMPL STREQUAL "sequential" OR IMPL STREQUAL "openmp" OR IMPL STREQUAL "sycl")
-    set(CMAKE_CXX_COMPILER icpx)
-    #find_package(IntelDPCPP REQUIRED)
+if(IMPL STREQUAL "sequential" OR IMPL STREQUAL "openmp" OR IMPL STREQUAL "sycl")
+    find_package(IntelSYCL REQUIRED)
 elseif(IMPL STREQUAL "kokkos")
     if(NOT DEFINED ENV{KOKKOS_INSTALL_DIR})
         set(KOKKOS_INSTALL_DIR "/opt/kokkos/build/" CACHE PATH "Path to which Kokkos has been installed") 

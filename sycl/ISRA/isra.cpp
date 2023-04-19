@@ -29,14 +29,14 @@ SYCL_ISRA::SYCL_ISRA(int _lines, int _samples, int _bands, unsigned int _targetE
     comput          = sycl::malloc_device<double>(targetEndmembers*bands, _queue);
     ipiv            = sycl::malloc_device<int64_t>(targetEndmembers, _queue);
 
-    getrf_size       = oneapi::mkl::lapack::getrf_scratchpad_size<double>(
-                    _queue,
-                    targetEndmembers, targetEndmembers, targetEndmembers);
-    getri_size       = oneapi::mkl::lapack::getri_scratchpad_size<double>(_queue, targetEndmembers, targetEndmembers);
-    _queue.wait();
+    // getrf_size       = oneapi::mkl::lapack::getrf_scratchpad_size<double>(
+    //                 _queue,
+    //                 targetEndmembers, targetEndmembers, targetEndmembers);
+    // getri_size       = oneapi::mkl::lapack::getri_scratchpad_size<double>(_queue, targetEndmembers, targetEndmembers);
+    // _queue.wait();
 
-    getrf_scratchpad = sycl::malloc_device<double>(getrf_size, _queue);
-    getri_scratchpad = sycl::malloc_device<double>(getri_size, _queue);
+    // getrf_scratchpad = sycl::malloc_device<double>(getrf_size, _queue);
+    // getri_scratchpad = sycl::malloc_device<double>(getri_size, _queue);
 }
 
 
@@ -53,11 +53,11 @@ void SYCL_ISRA::clearMemory() {
 	if(!isQueueInit())
 		return;
 
-    if(numerator != nullptr) {sycl::free(numerator, _queue); numerator = nullptr; }
-    if(denominator != nullptr) {sycl::free(denominator, _queue); denominator = nullptr; }
-    if(aux != nullptr) {sycl::free(aux, _queue); aux = nullptr; }
-    if(image != nullptr) {sycl::free(image, _queue); image = nullptr; }
-    if(endmembers != nullptr) {sycl::free(endmembers, _queue); endmembers = nullptr; }
+    if (numerator != nullptr) {sycl::free(numerator, _queue); numerator = nullptr; }
+    if (denominator != nullptr) {sycl::free(denominator, _queue); denominator = nullptr; }
+    if (aux != nullptr) {sycl::free(aux, _queue); aux = nullptr; }
+    if (image != nullptr) {sycl::free(image, _queue); image = nullptr; }
+    if (endmembers != nullptr) {sycl::free(endmembers, _queue); endmembers = nullptr; }
     if (Et_E != nullptr) { sycl::free(Et_E, _queue); Et_E = nullptr; }
     if (comput != nullptr) { sycl::free(comput, _queue); comput = nullptr; }
     if (getrf_scratchpad != nullptr) { sycl::free(getrf_scratchpad, _queue); getrf_scratchpad = nullptr; }
@@ -67,32 +67,32 @@ void SYCL_ISRA::clearMemory() {
 
 
 void SYCL_ISRA::preProcessAbundance(const double* image, double* Ab, const double* e, int targetEndmembers, int lines, int samples, int bands) {
-	double alpha{1.0}, beta{0.0};
+	// double alpha{1.0}, beta{0.0};
 
-    // Et_E[target * target] = e[bands * target] * e[bands * target]
-    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, targetEndmembers, targetEndmembers, bands, alpha, e, targetEndmembers, e, targetEndmembers, beta, Et_E, targetEndmembers);
-    _queue.wait();
-	invTR(Et_E, targetEndmembers);
+    // // Et_E[target * target] = e[bands * target] * e[bands * target]
+    // oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, targetEndmembers, targetEndmembers, bands, alpha, e, targetEndmembers, e, targetEndmembers, beta, Et_E, targetEndmembers);
+    // _queue.wait();
+	// invTR(Et_E, targetEndmembers);
 
-    //comput[target * bands] = Et_E[target * target] * e[bands * target]
-    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, bands, targetEndmembers, alpha, Et_E, targetEndmembers, e, targetEndmembers, beta, comput, targetEndmembers);
-	_queue.wait();
+    // //comput[target * bands] = Et_E[target * target] * e[bands * target]
+    // oneapi::mkl::blas::column_major::gemm(_queue, nontrans, nontrans, targetEndmembers, bands, targetEndmembers, alpha, Et_E, targetEndmembers, e, targetEndmembers, beta, comput, targetEndmembers);
+	// _queue.wait();
 
-    // Ab[N * target] = image[bands * N] * comput[target * bands]
-	const int N = lines*samples;
-    oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, image, N, comput, targetEndmembers, beta, Ab, N);
-	_queue.wait();
+    // // Ab[N * target] = image[bands * N] * comput[target * bands]
+	// const int N = lines*samples;
+    // oneapi::mkl::blas::column_major::gemm(_queue, nontrans, trans, N, targetEndmembers, bands, alpha, image, N, comput, targetEndmembers, beta, Ab, N);
+	// _queue.wait();
 
-    // remove negatives
-    _queue.parallel_for<class isra_10>(cl::sycl::range<1> (N * targetEndmembers), [=] (auto i){
-        Ab[i] = (Ab[i] < 0.0) ? 0.00001 : Ab[i];
-    }).wait();
+    // // remove negatives
+    // _queue.parallel_for<class isra_10>(cl::sycl::range<1> (N * targetEndmembers), [=] (auto i){
+    //     Ab[i] = (Ab[i] < 0.0) ? 0.00001 : Ab[i];
+    // }).wait();
 }
 
 
 void SYCL_ISRA::invTR(double* A, int p) {
-    oneapi::mkl::lapack::getrf(_queue, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv, getrf_scratchpad, getrf_size).wait();
-    oneapi::mkl::lapack::getri(_queue, targetEndmembers, A, targetEndmembers, ipiv, getri_scratchpad, getri_size).wait();
+    // oneapi::mkl::lapack::getrf(_queue, targetEndmembers, targetEndmembers, A, targetEndmembers, ipiv, getrf_scratchpad, getrf_size).wait();
+    // oneapi::mkl::lapack::getri(_queue, targetEndmembers, A, targetEndmembers, ipiv, getri_scratchpad, getri_size).wait();
 }
 
 
