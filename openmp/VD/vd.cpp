@@ -59,13 +59,13 @@ void OpenMP_VD::clearMemory() {
 
 void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
     const unsigned int N{lines*samples};
-    const double inv_N{static_cast<double>(1/N)};
+    const double inv_N{1 / static_cast<double>(N)};
     double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     const double alpha{(double) 1/N}, beta{0};
     double superb[bands-1];
     const double k = 2 / static_cast<double>(samples) / static_cast<double>(lines);
 
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for (size_t i = 0; i < bands; i++)
         meanSpect[i] = cblas_dasum(N, &image[i*N], 1);
     
@@ -98,16 +98,12 @@ void OpenMP_VD::runOnCPU(const int approxVal, const double* image) {
     for(int i = 0; i < bands; i++) {
         const double testChecker = CorrEigVal[i] - CovEigVal[i];
     	sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * k;
-    	sigmaTest = std::sqrt(sigmaSquareTest);
+    	sigmaTest = std::sqrt(sigmaSquareTest) * M_SQRT2;
 
-        #pragma omp parallel for
     	for(int j = 1; j <= FPS; j++) {
-            TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
-            #pragma omp critical
-            {
-                if(TaoTest < testChecker)
-                    count[j-1]++;
-            }
+            TaoTest = sigmaTest * estimation[j-1];
+            if(TaoTest < testChecker)
+                count[j-1]++;
         }
     }
     endmembers = count[approxVal-1];
@@ -118,11 +114,11 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
     double TaoTest{0.f}, sigmaTest{0.f}, sigmaSquareTest{0.f};
     unsigned int* count = new unsigned int[FPS];
     const unsigned int N{lines*samples};
-    const double inv_N{static_cast<double>(1/N)};
+    const double inv_N{1 / static_cast<double>(N)};
     const double alpha{(double) 1/N}, beta{0};
     const double k = 2 / static_cast<double>(samples) / static_cast<double>(lines);
     double superb[bands-1];
-    const int default_dev = omp_get_default_device();
+    const int ompDevice = 1;//omp_get_default_device();
 
     //reassign "this" values
     double* estimation = this->estimation;
@@ -135,72 +131,74 @@ void OpenMP_VD::runOnGPU(const int approxVal, const double* image) {
     double* VT = this->VT;
     double* meanImage = this->meanImage;
 
-    std::fill(count, count+FPS, 0);
-
     #pragma omp target enter data \
-    map(to: estimation[0:FPS], count[0:FPS], \
-            image[0:lines*samples*bands]) \
+    map(to: estimation[0:FPS], image[0:lines*samples*bands]) \
     map(alloc: meanSpect[0:bands], Cov[0:bands*bands], \
         Corr[0:bands*bands], CovEigVal[0:bands], CorrEigVal[0:bands], \
         U[0:bands*bands], VT[0:bands*bands], superb[0:bands-1], \
-        meanImage[0:lines*samples*bands]) device(default_dev)
+        meanImage[0:lines*samples*bands], count[0:FPS]) device(ompDevice)
     {
-        #pragma omp target data use_device_ptr(meanSpect, image) device(default_dev)
-        for (size_t i = 0; i < bands; i++)
-                meanSpect[i] = cblas_dasum(N, &image[i*N], 1);
+        for (size_t i = 0; i < bands; i++) {
+            #pragma omp target variant dispatch use_device_ptr(image) device(ompDevice)
+            {meanSpect[i] = cblas_dasum(N, &image[i*N], 1);}
+        }
         
-        #pragma omp target data use_device_ptr(meanSpect) device(default_dev)
+        #pragma omp target variant dispatch use_device_ptr(meanSpect) device(ompDevice)
         {cblas_dscal(bands, inv_N, meanSpect, 1);}
 
-        #pragma omp target teams distribute parallel for simd
+        #pragma omp target teams distribute parallel for simd device(ompDevice)
         for(int i = 0; i < bands; i++) {
             for(int j = 0; j < N; j++)
                 meanImage[i*N + j] = image[i*N + j] - meanSpect[i];
         }
 
-        #pragma omp target data use_device_ptr(meanImage, Cov) device(default_dev)
+        #pragma omp target variant dispatch use_device_ptr(meanImage, Cov) device(ompDevice)
         {
             cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans, bands, bands, N, alpha, meanImage, N, meanImage, N, beta, Cov, bands);
         }
 
         //correlation
-        #pragma omp target teams distribute parallel for collapse(2) device(default_dev)
+        #pragma omp target teams distribute parallel for collapse(2) device(ompDevice)
         for(int j = 0; j < bands; j++)
             for(int i = 0; i < bands; i++)
                 Corr[i*bands + j] = Cov[i*bands + j]+(meanSpect[i] * meanSpect[j]);
 
         //SVD
-        #pragma omp target data use_device_ptr(Cov, CovEigVal, U, VT) device(default_dev)
+        #pragma omp target variant dispatch use_device_ptr(Cov, CovEigVal, U, VT) device(ompDevice)
         {
             LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Cov, bands, CovEigVal, U, bands, VT, bands, superb);
         }
 
-        #pragma omp target data use_device_ptr(Corr, CorrEigVal, U, VT) device(default_dev)
+        #pragma omp target variant dispatch use_device_ptr(Corr, CorrEigVal, U, VT) device(ompDevice)
         {
             LAPACKE_dgesvd(LAPACK_COL_MAJOR, 'S', 'N', bands, bands, Corr, bands, CorrEigVal, U, bands, VT, bands, superb);
         }
 
+        #pragma omp target teams distribute parallel for simd device(ompDevice)
+        for (size_t i = 0; i < FPS; i++)
+            count[i] = 0;
+
         //estimation
-        #pragma omp target device(default_dev)
+        #pragma omp target parallel for device(ompDevice)
         for(int i = 0; i < bands; i++) {
             const double testChecker = CorrEigVal[i] - CovEigVal[i];
             sigmaSquareTest = (CovEigVal[i]*CovEigVal[i] + CorrEigVal[i]*CorrEigVal[i]) * k;
-            sigmaTest = sqrt(sigmaSquareTest);
+            sigmaTest = std::sqrt(sigmaSquareTest) * M_SQRT2;
 
-            #pragma omp parallel for
             for(int j = 1; j <= FPS; j++) {
-                TaoTest = M_SQRT2 * sigmaTest * estimation[j-1];
-                #pragma omp critical
-                {
-                    if(TaoTest < testChecker)
-                        count[j-1]++;
-                }
+                TaoTest = sigmaTest * estimation[j-1];
+                if(TaoTest < testChecker)
+                    count[j-1]++;
             }
         }
     }
-    #pragma omp target exit data map(from: count[0: FPS]) device(default_dev)
+    #pragma omp target exit data map(from: count[0: FPS], CorrEigVal[0:10]) device(ompDevice)
 
     endmembers = count[approxVal-1];
+    for (size_t i = 0; i < 10; i++)
+        std::cout << CorrEigVal[i] << ", ";
+    std::cout << std::endl;
+    
 }
 
 

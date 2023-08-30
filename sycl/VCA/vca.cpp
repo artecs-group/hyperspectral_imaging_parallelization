@@ -22,7 +22,7 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 	y          = sycl::malloc_device<double>(lines * samples * targetEndmembers, _queue);
 	dImage     = sycl::malloc_device<double>(bands * lines * samples, _queue);
 	meanImage  = sycl::malloc_device<double>(bands * lines * samples, _queue);
-	mean       = sycl::malloc_shared<double>(bands, _queue); //BUG: keep it shared to avoid error of compatibility with CUDA
+	mean       = sycl::malloc_device<double>(bands, _queue);
 	svdMat     = sycl::malloc_device<double>(bands * bands, _queue);
 	D          = sycl::malloc_device<double>(bands, _queue);//eigenvalues
 	U          = sycl::malloc_device<double>(bands * bands, _queue);//eigenvectors
@@ -40,7 +40,7 @@ SYCL_VCA::SYCL_VCA(int _lines, int _samples, int _bands, unsigned int _targetEnd
 	pinvU	   = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
 	pinvVT	   = sycl::malloc_device<double>(targetEndmembers * targetEndmembers, _queue);
 	redVars    = sycl::malloc_shared<double>(3, _queue);
-	imax       = sycl::malloc_shared<int64_t>(1, _queue); //BUG: keep it shared to avoid error of compatibility with CUDA
+	imax       = sycl::malloc_device<int64_t>(1, _queue);
 
     scrach_size = oneapi::mkl::lapack::gesvd_scratchpad_size<double>(
                     _queue, 
