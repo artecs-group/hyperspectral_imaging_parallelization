@@ -77,3 +77,6 @@ In order to execute with Kokkos framework, you have to set where Kokkos is insta
 > make
 > make run
 ```
+
+## Acknowledgements
+This paper has been supported by the EU (FEDER), the Spanish MINECO and CM under grants S2018/TCS-4423, PID2021-126576NB-I00 funded by MCIN/AEI/10.13039/501100011033 and by “ERDF A way of making Europe”.
